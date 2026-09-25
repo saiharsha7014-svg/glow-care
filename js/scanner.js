@@ -506,12 +506,14 @@ function captureVideoSnapshot() {
 }
 
 // 7. Computer Vision Pixel Inspection Engine (Direct Canvas Synchronous Analysis)
+// Improved multi-signal analysis: uses zone-relative comparisons, luminance variance,
+// specular highlight detection, inter-zone redness differentials, and calibrated scoring.
 function analyzeFaceSkinCharacteristics(sourceCanvas) {
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 240;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  
+
   if (sourceCanvas) {
     ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
   }
@@ -519,63 +521,158 @@ function analyzeFaceSkinCharacteristics(sourceCanvas) {
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imgData.data;
 
-  // Extract pixel zone samples: Forehead, T-Zone, Cheeks, Under-Eyes, Chin
+  // ─── Zone sampling: 6 key facial regions ─────────────────────────────────
   const zones = {
-    forehead: sampleZone(data, canvas.width, 0.35, 0.18, 0.3, 0.15),
-    tzone: sampleZone(data, canvas.width, 0.40, 0.32, 0.2, 0.25),
-    leftCheek: sampleZone(data, canvas.width, 0.20, 0.45, 0.2, 0.22),
-    rightCheek: sampleZone(data, canvas.width, 0.60, 0.45, 0.2, 0.22),
-    underEyes: sampleZone(data, canvas.width, 0.30, 0.35, 0.4, 0.10),
-    chin: sampleZone(data, canvas.width, 0.40, 0.72, 0.2, 0.15)
+    forehead:   sampleZone(data, canvas.width, 0.33, 0.12, 0.34, 0.16),
+    tzone:      sampleZone(data, canvas.width, 0.40, 0.30, 0.20, 0.28),
+    leftCheek:  sampleZone(data, canvas.width, 0.16, 0.44, 0.22, 0.24),
+    rightCheek: sampleZone(data, canvas.width, 0.62, 0.44, 0.22, 0.24),
+    underEyes:  sampleZone(data, canvas.width, 0.28, 0.32, 0.44, 0.10),
+    chin:       sampleZone(data, canvas.width, 0.38, 0.72, 0.24, 0.15)
   };
 
-  // Evaluate redness / inflammation metric (R vs G/B differential)
-  const cheekRedness = (zones.leftCheek.redness + zones.rightCheek.redness) / 2;
-  const rednessScore = Math.min(95, Math.max(18, Math.round(cheekRedness * 1.5 + 20)));
+  // ─── Neutral baseline: average luminance across the whole face zone ───────
+  const faceLumBaseline = (
+    zones.forehead.luminance * 0.20 +
+    zones.tzone.luminance   * 0.15 +
+    zones.leftCheek.luminance  * 0.20 +
+    zones.rightCheek.luminance * 0.20 +
+    zones.underEyes.luminance  * 0.10 +
+    zones.chin.luminance       * 0.15
+  );
 
-  // Evaluate shine / oiliness (specular highlights in T-zone)
-  const tzoneLuminance = zones.tzone.luminance;
-  const oilinessScore = Math.min(92, Math.max(22, Math.round((tzoneLuminance / 255) * 100 * 1.05)));
+  // ─── OILINESS: T-zone specular excess above face baseline ─────────────────
+  // Oily skin causes the T-zone to appear notably brighter than the rest.
+  // Low variance in a bright T-zone = specular highlight = sebum shine.
+  const tzoneExcess = zones.tzone.luminance - faceLumBaseline;          // +ve = brighter than avg
+  const specularity = Math.max(0, tzoneExcess);                         // 0–~80 typical range
+  const lowVariancePenalty = Math.max(0, 20 - zones.tzone.variance);    // low variance = more uniform shine
+  const rawOiliness = specularity * 0.85 + lowVariancePenalty * 0.6;
+  const oilinessScore = clamp(Math.round(rawOiliness), 20, 90);
 
-  // Evaluate texture variance / visible pores (standard deviation of luminance)
+  // ─── DRYNESS: outer zones below baseline + high local variance ────────────
+  // Dry skin has low luminance AND rough/flaky texture (high variance).
+  const outerLum = (zones.leftCheek.luminance + zones.rightCheek.luminance + zones.chin.luminance) / 3;
+  const outerVariance = (zones.leftCheek.variance + zones.rightCheek.variance) / 2;
+  const lumDeficit = Math.max(0, faceLumBaseline - outerLum);           // lower than face avg = less reflective
+  const roughnessSignal = Math.max(0, outerVariance - 12);              // variance above base texture
+  const rawDryness = lumDeficit * 0.65 + roughnessSignal * 1.2;
+  const drynessScore = clamp(Math.round(rawDryness), 15, 88);
+
+  // ─── REDNESS: cheek red-channel excess vs green/blue ─────────────────────
+  // Actual redness = how much the red channel exceeds the mean of G+B.
+  // Calibrated: typical neutral skin → redness ~20; inflamed skin → 40+.
+  const cheekRednessRaw = (zones.leftCheek.redness + zones.rightCheek.redness) / 2;
+  // Normalise to a 0-100 scale: max realistic redness differential ≈ 60
+  const rednessScore = clamp(Math.round((cheekRednessRaw / 60) * 100), 18, 95);
+
+  // ─── PORES / TEXTURE: luminance variance in cheek + T-zone ───────────────
+  // Larger pores create micro-shadows → higher local luminance variance.
   const textureVariance = (zones.leftCheek.variance + zones.tzone.variance) / 2;
-  const poresScore = Math.min(90, Math.max(26, Math.round(textureVariance * 2.7 + 15)));
+  // Scale: variance 5 = smooth, 30+ = very rough/large pores
+  const poresScore = clamp(Math.round((textureVariance / 35) * 100), 20, 90);
 
-  // Evaluate under-eye contrast vs cheek baseline (darkness ratio)
-  const underEyeContrast = Math.max(0, zones.leftCheek.luminance - zones.underEyes.luminance);
-  const underEyeScore = Math.min(88, Math.max(20, Math.round(underEyeContrast * 1.8 + 32)));
+  // ─── UNDER-EYE DARKNESS: darkness relative to forehead neutral ───────────
+  // Forehead is the most neutral high-luminance zone on most faces.
+  // Under-eye is typically darker; large gap = significant dark circles.
+  const underEyeGap = Math.max(0, zones.forehead.luminance - zones.underEyes.luminance);
+  // Gap range: 0 = no circles, 80+ = very pronounced
+  const underEyeScore = clamp(Math.round((underEyeGap / 70) * 100), 15, 88);
 
-  // Evaluate pigmentation / dark spots
-  const pigmentationVariance = (zones.leftCheek.variance + zones.forehead.variance) / 2;
-  const pigmentationScore = Math.min(85, Math.max(16, Math.round(pigmentationVariance * 2.0 + 12)));
+  // ─── PIGMENTATION / DARK SPOTS: inter-zone luminance variance ────────────
+  // Uneven distribution of melanin shows as high variance between zones.
+  const zoneLums = [
+    zones.forehead.luminance, zones.tzone.luminance,
+    zones.leftCheek.luminance, zones.rightCheek.luminance, zones.chin.luminance
+  ];
+  const zoneMean = zoneLums.reduce((s, v) => s + v, 0) / zoneLums.length;
+  const zoneSpread = Math.sqrt(zoneLums.reduce((s, v) => s + (v - zoneMean) ** 2, 0) / zoneLums.length);
+  // High spread = uneven tone / pigmentation
+  const pigmentationScore = clamp(Math.round((zoneSpread / 40) * 100), 14, 85);
 
-  // Evaluate dryness (inverse of oiliness combined with low reflectance)
-  const drynessScore = Math.min(88, Math.max(15, Math.round(Math.max(10, 95 - oilinessScore * 0.9))));
+  // ─── ACNE: redness spikes + pore depth + chin/cheek variance peaks ────────
+  // Acne manifests as localised redness + fine texture variations.
+  const localPeaks = (zones.leftCheek.variance + zones.rightCheek.variance + zones.chin.variance) / 3;
+  const acneRaw = cheekRednessRaw * 0.55 + localPeaks * 1.1;
+  const acneScore = clamp(Math.round((acneRaw / 55) * 100), 14, 88);
 
-  // Evaluate acne probability from localized redness peaks & pore depth
-  const acneScore = Math.min(88, Math.max(14, Math.round(rednessScore * 0.7 + poresScore * 0.25)));
+  // ─── SKIN TYPE CLASSIFICATION (multi-signal, weighted) ───────────────────
+  // Score each type on multiple signals; highest cumulative wins.
+  const typeScores = {
+    'Oily & Acne-Prone': 0,
+    'Oily Skin': 0,
+    'Dry & Sensitive': 0,
+    'Sensitive & Reactive': 0,
+    'Normal Balance': 0,
+    'Combination Skin': 0
+  };
 
-  // Determine Primary Skin Type
-  let skinType = 'Combination';
-  if (oilinessScore > 62 && poresScore > 50) {
-    skinType = 'Oily & Acne-Prone';
-  } else if (drynessScore > 58 && oilinessScore < 42) {
-    skinType = 'Dry & Sensitive';
-  } else if (oilinessScore > 58 && drynessScore < 45) {
-    skinType = 'Oily Skin';
-  } else if (rednessScore > 60) {
-    skinType = 'Sensitive & Reactive';
-  } else if (oilinessScore >= 38 && oilinessScore <= 58 && poresScore < 50) {
-    skinType = 'Normal Balance';
-  } else {
-    skinType = 'Combination Skin';
-  }
+  // Oily & Acne-Prone
+  if (oilinessScore > 60) typeScores['Oily & Acne-Prone'] += 3;
+  if (poresScore > 55)    typeScores['Oily & Acne-Prone'] += 2;
+  if (acneScore > 50)     typeScores['Oily & Acne-Prone'] += 2;
+  if (rednessScore > 50)  typeScores['Oily & Acne-Prone'] += 1;
 
-  // Calculate Overall Skin Health Score (0 - 100)
-  const penalties = (acneScore * 0.18) + (rednessScore * 0.15) + (poresScore * 0.15) + (underEyeScore * 0.14) + (Math.abs(50 - oilinessScore) * 0.18);
-  const overallScore = Math.max(50, Math.min(96, Math.round(100 - penalties * 0.45)));
+  // Oily Skin (no significant acne)
+  if (oilinessScore > 55) typeScores['Oily Skin'] += 3;
+  if (drynessScore < 35)  typeScores['Oily Skin'] += 2;
+  if (acneScore < 40)     typeScores['Oily Skin'] += 1;
 
-  // Build All 10 Detected Concerns (as specified in prompt)
+  // Dry & Sensitive
+  if (drynessScore > 50)  typeScores['Dry & Sensitive'] += 3;
+  if (oilinessScore < 35) typeScores['Dry & Sensitive'] += 2;
+  if (rednessScore > 40)  typeScores['Dry & Sensitive'] += 1;
+
+  // Sensitive & Reactive
+  if (rednessScore > 58)  typeScores['Sensitive & Reactive'] += 3;
+  if (drynessScore > 38)  typeScores['Sensitive & Reactive'] += 2;
+  if (oilinessScore < 45) typeScores['Sensitive & Reactive'] += 1;
+
+  // Normal Balance
+  if (oilinessScore >= 30 && oilinessScore <= 55) typeScores['Normal Balance'] += 3;
+  if (drynessScore < 40)  typeScores['Normal Balance'] += 2;
+  if (rednessScore < 40)  typeScores['Normal Balance'] += 2;
+  if (poresScore < 45)    typeScores['Normal Balance'] += 1;
+
+  // Combination Skin (T-zone oily, cheeks drier)
+  if (specularity > 10 && outerLum < faceLumBaseline - 3) typeScores['Combination Skin'] += 4;
+  if (oilinessScore > 35 && oilinessScore < 65)           typeScores['Combination Skin'] += 2;
+  if (drynessScore > 25 && drynessScore < 55)             typeScores['Combination Skin'] += 2;
+
+  const skinType = Object.entries(typeScores)
+    .sort((a, b) => b[1] - a[1])[0][0];
+
+  // ─── OVERALL SKIN HEALTH SCORE ────────────────────────────────────────────
+  // Weighted penalty deduction from 100. Lower concerns = higher score.
+  const penaltyTotal =
+    acneScore      * 0.20 +
+    rednessScore   * 0.15 +
+    poresScore     * 0.14 +
+    underEyeScore  * 0.13 +
+    pigmentationScore * 0.12 +
+    drynessScore   * 0.10 +
+    Math.abs(oilinessScore - 40) * 0.08; // 40 is ideal sebum balance
+
+  const overallScore = clamp(Math.round(100 - penaltyTotal * 0.52), 46, 97);
+
+  // Log raw metrics for development transparency (per requirement)
+  console.group('Glow Care — Skin Analysis Raw Detection Response');
+  console.table({
+    oilinessScore, drynessScore, rednessScore, poresScore,
+    underEyeScore, pigmentationScore, acneScore, overallScore, skinType
+  });
+  console.log('Zone luminances:', {
+    forehead: zones.forehead.luminance.toFixed(1),
+    tzone: zones.tzone.luminance.toFixed(1),
+    leftCheek: zones.leftCheek.luminance.toFixed(1),
+    rightCheek: zones.rightCheek.luminance.toFixed(1),
+    underEyes: zones.underEyes.luminance.toFixed(1),
+    chin: zones.chin.luminance.toFixed(1),
+    baseline: faceLumBaseline.toFixed(1)
+  });
+  console.groupEnd();
+
+  // ─── BUILD CONCERNS ARRAY ─────────────────────────────────────────────────
   const concerns = [
     {
       name: 'Pimples / Acne',
@@ -586,7 +683,7 @@ function analyzeFaceSkinCharacteristics(sourceCanvas) {
     },
     {
       name: 'Oily skin',
-      level: oilinessScore > 60 ? 'High' : oilinessScore > 42 ? 'Moderate' : 'Mild',
+      level: oilinessScore > 60 ? 'High' : oilinessScore > 40 ? 'Moderate' : 'Mild',
       score: oilinessScore,
       area: 'T-Zone & Forehead',
       solution: 'Gentle Cleanser + Lightweight Oil-Free Moisturizer + Matte Sunscreen'
@@ -607,49 +704,49 @@ function analyzeFaceSkinCharacteristics(sourceCanvas) {
     },
     {
       name: 'Under-eye darkness',
-      level: underEyeScore > 52 ? 'High' : underEyeScore > 35 ? 'Moderate' : 'Mild',
+      level: underEyeScore > 52 ? 'High' : underEyeScore > 32 ? 'Moderate' : 'Mild',
       score: underEyeScore,
       area: 'Infraorbital Contour',
       solution: '5% Caffeine + Multi-Peptide Eye Gel + Cold Compress + Daily Sun Protection'
     },
     {
       name: 'Dark spots',
-      level: pigmentationScore > 50 ? 'High' : pigmentationScore > 32 ? 'Moderate' : 'Mild',
+      level: pigmentationScore > 50 ? 'High' : pigmentationScore > 30 ? 'Moderate' : 'Mild',
       score: pigmentationScore,
       area: 'Cheeks & Forehead',
       solution: 'Sunscreen + Gentle Brightening Skincare (15% Vitamin C / Alpha Arbutin) + Moisturizer'
     },
     {
       name: 'Pigmentation',
-      level: pigmentationScore > 48 ? 'High' : pigmentationScore > 30 ? 'Moderate' : 'Mild',
-      score: Math.max(20, pigmentationScore - 2),
+      level: pigmentationScore > 48 ? 'High' : pigmentationScore > 28 ? 'Moderate' : 'Mild',
+      score: Math.max(14, pigmentationScore - 3),
       area: 'Cheekbones & Temples',
       solution: 'Broad-Spectrum SPF 50+ Sunscreen + Gentle Brightening Serum + Night Cream'
     },
     {
       name: 'Blackheads',
-      level: poresScore > 50 ? 'High' : poresScore > 32 ? 'Moderate' : 'Mild',
-      score: Math.max(20, poresScore - 3),
+      level: poresScore > 50 ? 'High' : poresScore > 30 ? 'Moderate' : 'Mild',
+      score: Math.max(14, poresScore - 4),
       area: 'Nose & Chin Crease',
       solution: '2% BHA Salicylic Exfoliant + Gentle Foaming Cleanser + Lightweight Hydrator'
     },
     {
       name: 'Uneven skin tone',
-      level: pigmentationScore > 45 ? 'High' : pigmentationScore > 28 ? 'Moderate' : 'Mild',
-      score: Math.round((pigmentationScore + rednessScore) / 2),
+      level: pigmentationScore > 45 ? 'High' : pigmentationScore > 26 ? 'Moderate' : 'Mild',
+      score: clamp(Math.round((pigmentationScore + rednessScore) / 2), 14, 90),
       area: 'Mid-Face & Forehead',
       solution: 'Niacinamide Balance Serum + Daily Mineral Sunscreen + Barrier Cream'
     },
     {
       name: 'Dryness',
-      level: drynessScore > 55 ? 'High' : drynessScore > 35 ? 'Moderate' : 'Mild',
+      level: drynessScore > 55 ? 'High' : drynessScore > 32 ? 'Moderate' : 'Mild',
       score: drynessScore,
       area: 'Outer Cheeks & Perioral',
       solution: 'Hydrating Cleanser + Moisturizer + Hydrating Serum + Sunscreen'
     }
   ];
 
-  // Sort concerns by score descending so the most prominent concerns are presented first
+  // Sort by score descending — most prominent concerns shown first
   concerns.sort((a, b) => b.score - a.score);
 
   return {
@@ -657,21 +754,27 @@ function analyzeFaceSkinCharacteristics(sourceCanvas) {
     overallScore,
     concerns,
     metrics: {
-      hydration: Math.max(30, 100 - drynessScore),
+      hydration: clamp(100 - drynessScore, 28, 95),
       sebum: oilinessScore,
-      smoothness: Math.max(30, 100 - poresScore),
-      clarity: Math.max(25, 100 - acneScore),
-      radiance: Math.max(35, 100 - underEyeScore)
+      smoothness: clamp(100 - poresScore, 28, 95),
+      clarity: clamp(100 - acneScore, 24, 95),
+      radiance: clamp(100 - underEyeScore, 30, 95)
     }
   };
 }
 
-// Sample subregion pixel data
+// Utility: clamp a value between min and max
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
+// Sample subregion pixel data — returns avg luminance, redness, and luminance std-dev (variance)
 function sampleZone(data, width, relX, relY, relW, relH) {
+  const height = data.length / (width * 4);
   const startX = Math.round(relX * width);
-  const startY = Math.round(relY * (data.length / (width * 4)));
-  const zoneW = Math.round(relW * width);
-  const zoneH = Math.round(relH * (data.length / (width * 4)));
+  const startY = Math.round(relY * height);
+  const zoneW  = Math.round(relW * width);
+  const zoneH  = Math.round(relH * height);
 
   let totalR = 0, totalG = 0, totalB = 0, totalLum = 0, count = 0;
   const lumList = [];
@@ -679,14 +782,14 @@ function sampleZone(data, width, relX, relY, relW, relH) {
   for (let y = startY; y < startY + zoneH; y += 2) {
     for (let x = startX; x < startX + zoneW; x += 2) {
       const idx = (y * width + x) * 4;
-      if (idx < data.length - 4) {
+      if (idx >= 0 && idx < data.length - 3) {
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
         const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        totalR += r;
-        totalG += g;
-        totalB += b;
+        totalR   += r;
+        totalG   += g;
+        totalB   += b;
         totalLum += lum;
         lumList.push(lum);
         count++;
@@ -694,16 +797,19 @@ function sampleZone(data, width, relX, relY, relW, relH) {
     }
   }
 
-  const avgLum = count > 0 ? totalLum / count : 128;
-  const avgR = count > 0 ? totalR / count : 128;
-  const avgG = count > 0 ? totalG / count : 128;
-  const avgB = count > 0 ? totalB / count : 128;
+  if (count === 0) return { luminance: 128, redness: 0, variance: 10 };
 
+  const avgLum = totalLum / count;
+  const avgR   = totalR / count;
+  const avgG   = totalG / count;
+  const avgB   = totalB / count;
+
+  // Redness: how much red exceeds the average of green & blue channels
   const redness = Math.max(0, avgR - (avgG + avgB) / 2);
 
-  let sumSqDiff = 0;
-  lumList.forEach(l => sumSqDiff += (l - avgLum) * (l - avgLum));
-  const variance = count > 0 ? Math.sqrt(sumSqDiff / count) : 10;
+  // Variance: standard deviation of luminance (measures texture roughness)
+  const sumSqDiff = lumList.reduce((s, l) => s + (l - avgLum) ** 2, 0);
+  const variance  = Math.sqrt(sumSqDiff / count);
 
   return { luminance: avgLum, redness, variance };
 }
