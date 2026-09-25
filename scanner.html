@@ -92,20 +92,24 @@
         </div>
       </div>
 
-      <!-- Image Quality / Face Validation Alert Banner -->
+      <!-- Step 1 & Step 2 Validation Alert Banner -->
       <div id="quality-alert-banner" class="quality-alert-banner" style="display:none;">
-        <div class="quality-alert-icon">⚠️</div>
+        <div id="quality-alert-icon" class="quality-alert-icon">⚠️</div>
         <div class="quality-alert-content" style="flex:1;">
+          <div class="quality-step-pill" id="quality-alert-step-badge">Step 1 — Human Detection</div>
           <div id="quality-alert-title" class="quality-alert-title">Image Quality Check Notice</div>
           <div id="quality-alert-message" class="quality-alert-message">
             Please upload a clear, front-facing face photo with good lighting for a more useful analysis.
           </div>
           <div id="quality-alert-details" class="quality-alert-details"></div>
-          <div style="margin-top:0.8rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
-            <button id="btn-alert-retry" class="btn btn-sm btn-primary" onclick="resetScannerForNewScan()">Try Again with Front Camera</button>
+          <div class="alert-actions-row">
+            <button id="btn-alert-retry" class="btn btn-sm btn-primary" onclick="resetScannerForNewScan()">Try Live Camera</button>
             <label for="file-upload-selfie" class="btn btn-sm btn-outline-primary" style="cursor:pointer; margin:0;">
-              Upload Different Photo
+              Upload Clear Face Photo
             </label>
+            <button id="btn-alert-copy" class="btn btn-sm btn-ctrl" onclick="copyAlertMessage()" title="Copy exact notice text">
+              📋 Copy Notice
+            </button>
           </div>
         </div>
       </div>
@@ -189,6 +193,9 @@
                 <span>📁</span> Upload Photo
                 <input type="file" id="file-upload-selfie" accept="image/*" style="display:none;">
               </label>
+              <button id="btn-open-ai-settings" class="btn-ctrl" title="Configure AI Vision Engine (Local CV or Gemini)" onclick="openAiEngineModal()">
+                <span>✨</span> <span id="current-engine-label">AI Engine</span>
+              </button>
             </div>
           </div>
         </div>
@@ -253,6 +260,74 @@
       <!-- ================================================================= -->
       <section id="scanner-results-section" class="scanner-results-section">
         
+        <!-- PROMPT-MANDATED OFFICIAL SKIN ANALYSIS REPORT CARD -->
+        <div class="official-skin-report-container" id="official-skin-report-container">
+          <div class="report-header-banner">
+            <div class="report-header-left">
+              <span class="report-verified-pill">✓ Human face detected</span>
+              <h2 class="report-heading">Skin Analysis Report</h2>
+            </div>
+            <div class="report-header-actions">
+              <button id="btn-copy-report" class="btn btn-sm btn-primary" onclick="copyReportToClipboard()">
+                📋 Copy Formatted Report
+              </button>
+            </div>
+          </div>
+
+          <!-- Exact Output Format Pre-formatted Card -->
+          <div class="report-content-box">
+            <div class="report-status-line">Human face detected ✓</div>
+            <div class="report-section-title">Skin Analysis:</div>
+            
+            <div class="report-attribute-group">
+              <div class="report-attr-item">
+                <span class="report-attr-label">Skin characteristics:</span>
+                <span class="report-attr-val" id="report-val-characteristics">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Hydration:</span>
+                <span class="report-attr-val" id="report-val-hydration">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Oiliness:</span>
+                <span class="report-attr-val" id="report-val-oiliness">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Pores:</span>
+                <span class="report-attr-val" id="report-val-pores">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Acne/blemishes:</span>
+                <span class="report-attr-val" id="report-val-acne">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Redness:</span>
+                <span class="report-attr-val" id="report-val-redness">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Pigmentation:</span>
+                <span class="report-attr-val" id="report-val-pigmentation">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Skin tone:</span>
+                <span class="report-attr-val" id="report-val-skintone">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Texture/fine lines:</span>
+                <span class="report-attr-val" id="report-val-texture">-</span>
+              </div>
+              <div class="report-attr-item">
+                <span class="report-attr-label">Overall visible condition:</span>
+                <span class="report-attr-val" id="report-val-overall">-</span>
+              </div>
+            </div>
+
+            <div class="report-footer-note">
+              <strong>Note:</strong> This is an image-based visual assessment, not a medical diagnosis. Results can vary depending on lighting, camera quality, makeup, and image resolution.
+            </div>
+          </div>
+        </div>
+
         <!-- Header Card: Qualitative Inspection & Summary -->
         <div class="results-header-card">
           <div class="results-top-grid">
@@ -447,6 +522,55 @@
       </div>
     </div>
   </footer>
+
+  <!-- Modal: AI Vision Engine / Gemini Key Settings -->
+  <div id="ai-engine-modal" class="custom-modal-backdrop" style="display:none;">
+    <div class="custom-modal-card">
+      <div class="modal-card-header">
+        <h3 style="margin:0; font-size:1.15rem; font-weight:700;">✨ AI Vision Engine Settings</h3>
+        <button class="modal-close-btn" onclick="closeAiEngineModal()">✕</button>
+      </div>
+      <div class="modal-card-body">
+        <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:1.2rem; line-height:1.5;">
+          Glow Care includes a built-in browser-based Computer Vision & BlazeFace neural model that runs 100% offline, free, and instantly. You can also optionally connect Google Gemini Vision AI for multimodal cloud analysis.
+        </p>
+
+        <div style="margin-bottom:1.2rem;">
+          <label style="display:block; font-weight:700; font-size:0.88rem; margin-bottom:0.6rem; color:var(--text-primary);">
+            Select Active Vision Engine:
+          </label>
+          <div style="display:flex; flex-direction:column; gap:0.6rem;">
+            <label style="display:flex; align-items:flex-start; gap:0.6rem; cursor:pointer; font-size:0.9rem; padding:0.6rem 0.8rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); background:var(--bg-main);">
+              <input type="radio" name="ai-engine-choice" value="builtin" checked onchange="handleEngineRadioChange(this.value)" style="margin-top:0.2rem;">
+              <div>
+                <strong style="color:var(--text-primary);">Built-in Computer Vision (Recommended)</strong>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem;">Fast, 100% client-side, BlazeFace landmark alignment + spectrometry</div>
+              </div>
+            </label>
+            <label style="display:flex; align-items:flex-start; gap:0.6rem; cursor:pointer; font-size:0.9rem; padding:0.6rem 0.8rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); background:var(--bg-main);">
+              <input type="radio" name="ai-engine-choice" value="gemini" onchange="handleEngineRadioChange(this.value)" style="margin-top:0.2rem;">
+              <div>
+                <strong style="color:var(--text-primary);">Google Gemini Vision AI</strong>
+                <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.15rem;">Multimodal LLM cloud assessment with prompt-strict validation</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div id="gemini-key-container" style="display:none; margin-bottom:1.2rem;">
+          <label for="input-gemini-key" style="display:block; font-weight:700; font-size:0.86rem; margin-bottom:0.4rem; color:var(--text-primary);">
+            Google Gemini API Key:
+          </label>
+          <input type="password" id="input-gemini-key" placeholder="AIzaSy..." style="width:100%; padding:0.65rem 0.9rem; border-radius:var(--radius-sm); border:1px solid var(--border-light); background:var(--bg-main); color:var(--text-primary); font-size:0.9rem;">
+          <small style="color:var(--text-muted); display:block; margin-top:0.35rem; font-size:0.78rem;">Saved only in your browser's localStorage. Never sent to third parties.</small>
+        </div>
+      </div>
+      <div class="modal-card-footer" style="display:flex; justify-content:flex-end; gap:0.6rem;">
+        <button class="btn btn-sm btn-ctrl" onclick="closeAiEngineModal()">Cancel</button>
+        <button class="btn btn-sm btn-primary" onclick="saveAiEngineSettings()">Save Preferences</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script src="js/store.js"></script>

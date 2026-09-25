@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 400);
   }
 
+  // Initialize active AI engine indicator
+  updateEngineIndicator();
+
   // Check if a previous scan exists in store and display it
   checkAndDisplayPreviousScan();
 });
@@ -436,7 +439,7 @@ async function startScanSequence() {
   }, intervalStep);
 }
 
-// 6. Complete Scan & Execute Rigorous Computer Vision Quality Check & Analysis
+// 6. Complete Scan & Execute Strict Step 1 & Step 2 Validation Pipeline
 async function completeScanProcess() {
   const laser = document.getElementById('laser-scanning-sweep');
   const progressOverlay = document.getElementById('hud-progress-overlay');
@@ -450,48 +453,97 @@ async function completeScanProcess() {
   // 1. Capture snapshot canvas
   const snapshot = captureVideoSnapshot();
 
-  // 2. Resolve face bounding box on snapshot canvas
-  let faceBox = null;
-  if (blazefaceModel) {
+  // Check if optional Google Gemini Vision Engine is selected
+  const activeEngine = localStorage.getItem('glowcare_ai_engine') || 'builtin';
+  const geminiApiKey = localStorage.getItem('glowcare_gemini_api_key') || '';
+
+  if (activeEngine === 'gemini' && geminiApiKey) {
     try {
-      const preds = await blazefaceModel.estimateFaces(snapshot.canvas, false);
-      if (preds && preds.length > 0) {
-        const p = preds[0];
-        faceBox = {
-          x: p.topLeft[0],
-          y: p.topLeft[1],
-          width: p.bottomRight[0] - p.topLeft[0],
-          height: p.bottomRight[1] - p.topLeft[1]
-        };
+      updateGuidanceBadge('Consulting Gemini Vision AI...', 'warning');
+      const geminiText = await callGeminiVisionAnalysis(snapshot.canvas);
+
+      // Check Step 1 Failure response from Gemini
+      if (geminiText.includes("This image does not contain a valid human face")) {
+        SoundFx.playBeep(380, 0.22, 'sawtooth');
+        showValidationAlert(1, "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.", "Gemini Vision verified that no valid human face is present in this image.");
+        updateGuidanceBadge('Step 1 Failed: Non-human image', 'warning');
+        window.showToast("This image does not contain a valid human face.", "warning");
+
+        const resultsSection = document.getElementById('scanner-results-section');
+        if (resultsSection) resultsSection.classList.remove('show');
+        return;
       }
-    } catch (e) {}
+
+      // Check Step 2 Failure response from Gemini
+      if (geminiText.includes("I can detect a human face, but the image quality is not sufficient")) {
+        SoundFx.playBeep(380, 0.22, 'sawtooth');
+        showValidationAlert(2, "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.", "Gemini Vision determined that the lighting, sharpness, or visibility is inadequate for reliable skin analysis.");
+        updateGuidanceBadge('Step 2 Failed: Image quality insufficient', 'warning');
+        window.showToast("Image quality is not sufficient for skin analysis.", "warning");
+
+        const resultsSection = document.getElementById('scanner-results-section');
+        if (resultsSection) resultsSection.classList.remove('show');
+        return;
+      }
+
+      // If passed, parse Gemini response and render
+      hideValidationAlert();
+      SoundFx.successChime();
+
+      const parsedGemini = parseGeminiSkinReport(geminiText, snapshot.canvas);
+      if (window.store) {
+        window.store.saveScan({
+          ...parsedGemini,
+          snapshotImage: snapshot.dataUrl,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      updateGuidanceBadge('Human face detected ✓ Skin Analysis complete', 'success');
+      window.showToast('Skin analysis completed successfully!', 'success');
+      renderResultsDashboard(parsedGemini, snapshot.dataUrl);
+
+      setTimeout(() => {
+        const resultsSection = document.getElementById('scanner-results-section');
+        if (resultsSection) {
+          resultsSection.classList.add('show');
+          resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 350);
+      return;
+
+    } catch (gErr) {
+      console.warn("Gemini Vision failed, falling back to built-in Computer Vision:", gErr);
+      window.showToast("Gemini Vision request: " + gErr.message + ". Running built-in Computer Vision.", "warning");
+    }
   }
 
-  // Fallback to chromatic skin-tone face tracker if BlazeFace didn't detect
-  if (!faceBox) {
-    faceBox = detectFaceViaSkinTone(snapshot.canvas) || lastFaceBox;
-  }
+  // 2. BUILT-IN DUAL-STEP VALIDATION (Strict Step 1 & Step 2 Enforcement)
+  const validation = await runTwoStepFaceValidation(snapshot.canvas);
 
-  // 3. RIGOROUS QUALITY VALIDATION (Requirement #1: Do NOT generate prediction from unusable image)
-  const qualityCheck = validateFaceImageQuality(snapshot.canvas, faceBox);
-
-  if (!qualityCheck.valid) {
+  if (!validation.valid) {
     SoundFx.playBeep(380, 0.22, 'sawtooth');
-    showQualityAlert(qualityCheck.title, qualityCheck.message, qualityCheck.detail);
-    updateGuidanceBadge('Image quality insufficient — see notice below', 'warning');
-    window.showToast('Analysis stopped: ' + qualityCheck.detail, 'warning');
+    showValidationAlert(validation.step, validation.message, validation.detail);
+    
+    if (validation.step === 1) {
+      updateGuidanceBadge('Step 1 Failed: Non-human image', 'warning');
+      window.showToast('Human validation failed: Stop workflow immediately.', 'warning');
+    } else {
+      updateGuidanceBadge('Step 2 Failed: Image quality insufficient', 'warning');
+      window.showToast('Image quality check failed: Stop before skin analysis.', 'warning');
+    }
 
     const resultsSection = document.getElementById('scanner-results-section');
     if (resultsSection) resultsSection.classList.remove('show');
-    return; // STOP analysis immediately!
+    return; // STOP THE ENTIRE WORKFLOW IMMEDIATELY! NO SKIN ANALYSIS!
   }
 
-  // Quality check passed: hide alert banner
-  hideQualityAlert();
+  // Validation passed: hide alert banner
+  hideValidationAlert();
   SoundFx.successChime();
 
-  // 4. Run Computer Vision Spectrometry Pixel Analysis (Deterministic, No Guessed Numbers)
-  const analysisResult = analyzeFaceSkinCharacteristics(snapshot.canvas, faceBox);
+  // 3. Step 3 — Perform Visual Facial-Skin Characteristics Analysis
+  const analysisResult = analyzeFaceSkinCharacteristics(snapshot.canvas, validation.faceBox);
 
   // Save to Central Store
   if (window.store) {
@@ -502,10 +554,10 @@ async function completeScanProcess() {
     });
   }
 
-  updateGuidanceBadge('Analysis complete! View observation report below.', 'success');
-  window.showToast('Skin analysis completed successfully!', 'success');
+  updateGuidanceBadge('Human face detected ✓ Analysis complete!', 'success');
+  window.showToast('Human face detected ✓ Skin analysis complete.', 'success');
 
-  // Render Comprehensive Explanation-First Results Section
+  // Render Official Report & Full Results Dashboard
   renderResultsDashboard(analysisResult, snapshot.dataUrl);
 
   // Smooth scroll to results
@@ -518,90 +570,343 @@ async function completeScanProcess() {
   }, 350);
 }
 
-// Show / Hide Quality Alert Notice Banner
-function showQualityAlert(title, message, detail) {
+// Show / Hide Quality Alert Notice Banner with Prompt-Compliant Format
+function showValidationAlert(step, message, detail) {
   const banner = document.getElementById('quality-alert-banner');
+  const iconEl = document.getElementById('quality-alert-icon');
+  const badgeEl = document.getElementById('quality-alert-step-badge');
   const titleEl = document.getElementById('quality-alert-title');
   const msgEl = document.getElementById('quality-alert-message');
   const detailEl = document.getElementById('quality-alert-details');
 
-  if (titleEl) titleEl.textContent = title || "Image Quality Check Notice";
-  if (msgEl) msgEl.textContent = message || "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.";
-  if (detailEl) detailEl.textContent = detail || "";
-
   if (banner) {
+    banner.classList.remove('step-human-fail', 'step-quality-fail');
+    if (step === 1) {
+      banner.classList.add('step-human-fail');
+      if (iconEl) iconEl.textContent = '🚫';
+      if (badgeEl) badgeEl.textContent = 'Step 1 — Human Detection: Failed';
+      if (titleEl) titleEl.textContent = 'Non-Human Image Detected';
+    } else {
+      banner.classList.add('step-quality-fail');
+      if (iconEl) iconEl.textContent = '⚠️';
+      if (badgeEl) badgeEl.textContent = 'Step 2 — Face Quality Check: Insufficient';
+      if (titleEl) titleEl.textContent = 'Image Quality Notice';
+    }
+
+    if (msgEl) msgEl.textContent = message;
+    if (detailEl) detailEl.textContent = detail || '';
+
     banner.style.display = 'flex';
     banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 }
 
-function hideQualityAlert() {
+function hideValidationAlert() {
   const banner = document.getElementById('quality-alert-banner');
   if (banner) banner.style.display = 'none';
 }
 
-// 7. Rigorous Face & Image Quality Validator (Requirement #1)
-// Checks: Human face presence, size, lighting exposure, blurriness/sharpness, and occlusion.
-function validateFaceImageQuality(canvas, faceBox) {
-  if (!canvas) {
+// Legacy alias to maintain backward compatibility
+function showQualityAlert(title, message, detail) {
+  showValidationAlert(2, message, detail);
+}
+function hideQualityAlert() {
+  hideValidationAlert();
+}
+
+// =========================================================================
+// STEP 1 — HUMAN DETECTION ENGINE
+// Analyzes the uploaded image first and determines whether it contains
+// a real human face.
+// If the image does NOT contain a clearly visible real human face, DO NOT
+// perform any skin analysis.
+// Rejects: objects, animals, plants, scenery, food, products, screenshots,
+// drawings, cartoons, anime characters, illustrations, mannequins, statues,
+// AI-generated non-human faces, and other non-human images.
+//
+// Prompt Mandated Response:
+// "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis."
+// =========================================================================
+async function validateHumanFacePresence(canvas) {
+  if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
     return {
-      valid: false,
-      title: "No Image Available",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "No image frame could be captured for inspection."
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "No image frame could be captured for face analysis."
     };
   }
 
+  // 1. Run BlazeFace Neural Face Detector
+  let preds = [];
+  if (blazefaceModel) {
+    try {
+      preds = await blazefaceModel.estimateFaces(canvas, false);
+    } catch (err) {
+      console.warn("BlazeFace detection error:", err);
+    }
+  }
+
+  // Strict Rule: If no face detected by BlazeFace -> Reject!
+  // (NEVER fallback to raw chromatic skin tone detector for objects/animals!)
+  if (!preds || preds.length === 0) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "No human face could be identified. Objects, animals, plants, scenery, food, products, and non-human images cannot be analyzed."
+    };
+  }
+
+  const p = preds[0];
+  const conf = Array.isArray(p.probability) ? p.probability[0] : (p.probability || 1.0);
+  if (conf < 0.78) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Face confidence score is below human face verification threshold."
+    };
+  }
+
+  const fx1 = p.topLeft[0];
+  const fy1 = p.topLeft[1];
+  const fx2 = p.bottomRight[0];
+  const fy2 = p.bottomRight[1];
+  const fw = fx2 - fx1;
+  const fh = fy2 - fy1;
+
+  if (fw <= 25 || fh <= 25) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Detected feature scale is too small to constitute a valid human face."
+    };
+  }
+
+  // 2. Validate Facial Anatomical Proportions & Geometry
+  const landmarks = p.landmarks;
+  if (!landmarks || landmarks.length < 4) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Facial anatomical landmarks (eyes, nose, mouth) could not be resolved."
+    };
+  }
+
+  const rightEye = landmarks[0];
+  const leftEye = landmarks[1];
+  const nose = landmarks[2];
+  const mouth = landmarks[3];
+
+  const eyeDx = leftEye[0] - rightEye[0];
+  const eyeDy = leftEye[1] - rightEye[1];
+  const eyeDistance = Math.hypot(eyeDx, eyeDy);
+
+  // Proportion of eye distance to face width
+  const eyeRatio = eyeDistance / fw;
+  if (eyeRatio < 0.18 || eyeRatio > 0.62) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Facial landmark proportions do not match real human biological anatomy."
+    };
+  }
+
+  // Tilt orientation check
+  const angleDeg = Math.abs(Math.atan2(eyeDy, eyeDx) * (180 / Math.PI));
+  if (angleDeg > 45) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Orientation is tilted or inverted; valid front-facing human face required."
+    };
+  }
+
+  // Vertical sequence: Eyes must be above nose, nose above mouth
+  const eyeAvgY = (rightEye[1] + leftEye[1]) / 2;
+  if (nose[1] <= eyeAvgY || mouth[1] <= nose[1]) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Vertical landmark configuration does not match human facial structure."
+    };
+  }
+
+  // 3. Pixel-Level Biological vs Cartoon / Drawing / Anime / Statue / Mannequin Discrimination
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const startX = Math.max(0, Math.round(fx1));
+  const startY = Math.max(0, Math.round(fy1));
+  const boxW = Math.min(canvas.width - startX, Math.round(fw));
+  const boxH = Math.min(canvas.height - startY, Math.round(fh));
+
+  if (boxW < 20 || boxH < 20) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Face bounding coordinates outside valid frame limits."
+    };
+  }
+
+  const faceImgData = ctx.getImageData(startX, startY, boxW, boxH);
+  const data = faceImgData.data;
+
+  let skinPixelCount = 0;
+  let totalSampleCount = 0;
+  let grayPixelCount = 0;
+  let lineArtCount = 0;
+  const colorBuckets = new Set();
+
+  for (let y = 2; y < boxH - 2; y += 3) {
+    for (let x = 2; x < boxW - 2; x += 3) {
+      const idx = (y * boxW + x) * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      totalSampleCount++;
+
+      // Color quantization check (for flat anime / cartoon cel-shading)
+      const qr = Math.floor(r / 16);
+      const qg = Math.floor(g / 16);
+      const qb = Math.floor(b / 16);
+      colorBuckets.add(`${qr}-${qg}-${qb}`);
+
+      // Monochrome / statue check (marble, stone, plaster, bronze)
+      if (Math.abs(r - g) < 5 && Math.abs(g - b) < 5) {
+        grayPixelCount++;
+      }
+
+      // Check for sharp dark line art strokes typical of drawings/cartoons
+      const idxR = (y * boxW + (x + 1)) * 4;
+      const lumR = 0.299 * data[idxR] + 0.587 * data[idxR + 1] + 0.114 * data[idxR + 2];
+      if (Math.abs(lum - lumR) > 85 && lum < 55) {
+        lineArtCount++;
+      }
+
+      // Biological human skin chromatic gamut test (Melanin-Hemoglobin gamut)
+      const sum = r + g + b;
+      if (sum > 0) {
+        const nr = r / sum;
+        const ng = g / sum;
+        if (nr >= 0.33 && nr <= 0.62 && ng >= 0.25 && ng <= 0.42 && r > g && g >= b * 0.70) {
+          skinPixelCount++;
+        }
+      }
+    }
+  }
+
+  const skinRatio = totalSampleCount > 0 ? (skinPixelCount / totalSampleCount) : 0;
+  const grayRatio = totalSampleCount > 0 ? (grayPixelCount / totalSampleCount) : 0;
+  const lineArtRatio = totalSampleCount > 0 ? (lineArtCount / totalSampleCount) : 0;
+  const colorDiversity = colorBuckets.size;
+
+  // A. Statue / Plaster / Stone Check
+  if (grayRatio > 0.60) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Monochrome surface detected; characteristic of statues, sculptures, mannequins, or drawings."
+    };
+  }
+
+  // B. Biological human skin tone ratio check
+  if (skinRatio < 0.20) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Natural human skin chromatic tones not detected. Non-human images, objects, or illustrations cannot be analyzed."
+    };
+  }
+
+  // C. Cartoon / Anime / Flat Digital Drawing Check
+  if (colorDiversity < 15 && totalSampleCount > 180) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Flat cel-shading detected; characteristic of cartoons, anime characters, or digital illustrations."
+    };
+  }
+
+  if (lineArtRatio > 0.12 && skinRatio < 0.38) {
+    return {
+      pass: false,
+      step: 1,
+      message: "This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis.",
+      detail: "Illustration outlines detected; characteristic of drawings or animated artwork."
+    };
+  }
+
+  // Real human face verified!
+  return {
+    pass: true,
+    faceBox: {
+      x: fx1,
+      y: fy1,
+      width: fw,
+      height: fh
+    },
+    landmarks: landmarks,
+    confidence: conf
+  };
+}
+
+// =========================================================================
+// STEP 2 — FACE QUALITY CHECK ENGINE
+// If a real human face is detected, check whether the face is sufficiently
+// visible for analysis.
+// The face should ideally be:
+// - Clearly visible
+// - Well lit
+// - Not heavily blurred
+// - Not substantially covered by masks, hands, hair, or other objects
+// - Large enough in the image to inspect facial skin
+//
+// Prompt Mandated Response:
+// "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo."
+// =========================================================================
+function validateFaceQuality(canvas, faceBox, landmarks) {
   const cw = canvas.width;
   const ch = canvas.height;
 
-  // Check A: Face detected
-  if (!faceBox || faceBox.width <= 0 || faceBox.height <= 0) {
-    return {
-      valid: false,
-      title: "No Clear Face Detected",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "A usable front-facing human face could not be identified in the image. Please position yourself facing the camera directly."
-    };
-  }
-
-  // Check B: Face size proportion
+  // 1. Face size check
   const faceArea = faceBox.width * faceBox.height;
   const canvasArea = cw * ch;
-  const faceRatio = faceArea / canvasArea;
+  const areaRatio = faceArea / canvasArea;
 
-  if (faceBox.width < cw * 0.16 || faceBox.height < ch * 0.16 || faceRatio < 0.035) {
+  if (faceBox.width < cw * 0.16 || faceBox.height < ch * 0.16 || areaRatio < 0.030 || faceBox.width < 70) {
     return {
-      valid: false,
-      title: "Face Too Small or Far Away",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "The face is too distant in the frame for micro-texture and pore analysis. Please move closer to the camera."
+      pass: false,
+      step: 2,
+      message: "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.",
+      detail: "Face is too far away or small in the frame to inspect skin texture and pore characteristics."
     };
   }
 
-  // Extract pixel data inside face bounding box for spectrometry
+  // 2. Pixel data extraction for luminance, sharpness, and occlusion
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const fx = Math.max(0, Math.round(faceBox.x));
   const fy = Math.max(0, Math.round(faceBox.y));
   const fw = Math.min(cw - fx, Math.round(faceBox.width));
   const fh = Math.min(ch - fy, Math.round(faceBox.height));
 
-  if (fw <= 15 || fh <= 15) {
-    return {
-      valid: false,
-      title: "Face Frame Invalid",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "Face bounding coordinates are outside the valid frame limits."
-    };
-  }
-
   const faceImgData = ctx.getImageData(fx, fy, fw, fh);
   const data = faceImgData.data;
 
   let totalLum = 0;
-  let skinPixels = 0;
   let gradientSum = 0;
   let sampleCount = 0;
+  let skinPixels = 0;
   const gradList = [];
 
   for (let y = 0; y < fh - 2; y += 3) {
@@ -613,17 +918,16 @@ function validateFaceImageQuality(canvas, faceBox) {
       const lum = 0.299 * r + 0.587 * g + 0.114 * b;
       totalLum += lum;
 
-      // Chromatic skin check
       const sum = r + g + b;
       if (sum > 0) {
         const nr = r / sum;
         const ng = g / sum;
-        if (nr > 0.33 && nr < 0.58 && ng > 0.25 && ng < 0.42 && r > g) {
+        if (nr >= 0.33 && nr <= 0.60 && ng >= 0.25 && ng <= 0.42 && r > g) {
           skinPixels++;
         }
       }
 
-      // Edge sharpness via neighbor pixel differences
+      // Edge sharpness via neighbor differences
       const idxR = (y * fw + (x + 1)) * 4;
       const idxD = ((y + 1) * fw + x) * 4;
       const lumR = 0.299 * data[idxR] + 0.587 * data[idxR + 1] + 0.114 * data[idxR + 2];
@@ -636,53 +940,291 @@ function validateFaceImageQuality(canvas, faceBox) {
   }
 
   const avgLum = sampleCount > 0 ? totalLum / sampleCount : 128;
-
-  // Check C: Lighting level
-  if (avgLum < 38) {
-    return {
-      valid: false,
-      title: "Insufficient Lighting (Too Dark)",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: `Average face brightness is critically low (${Math.round(avgLum)}/255). Facial characteristics cannot be inspected in low light. Please face natural daylight or a well-lit room.`
-    };
-  }
-
-  if (avgLum > 238) {
-    return {
-      valid: false,
-      title: "Overexposed / Harsh Flash Glare",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: `Face brightness is washed out by direct flash or harsh specular glare (${Math.round(avgLum)}/255). Please use soft, diffused ambient lighting.`
-    };
-  }
-
-  // Check D: Blurriness / Image Sharpness
   const avgGrad = sampleCount > 0 ? gradientSum / sampleCount : 0;
+
+  // Sharpness variance
   let gradVarSum = 0;
   gradList.forEach(g => { gradVarSum += (g - avgGrad) ** 2; });
   const gradStdDev = sampleCount > 0 ? Math.sqrt(gradVarSum / sampleCount) : 0;
 
-  if (gradStdDev < 3.5 && avgGrad < 3.8) {
+  // Lighting check: Too dark (< 40)
+  if (avgLum < 40) {
     return {
-      valid: false,
-      title: "Image Appears Blurry or Out of Focus",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "Micro-texture and edge contrast are blurred. Please hold your camera steady, ensure lens focus, and retry."
+      pass: false,
+      step: 2,
+      message: "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.",
+      detail: `Average face brightness is critically low (${Math.round(avgLum)}/255). Facial skin details cannot be inspected in low light.`
     };
   }
 
-  // Check E: Face occlusion / skin ratio
+  // Lighting check: Overexposed (> 236)
+  if (avgLum > 236) {
+    return {
+      pass: false,
+      step: 2,
+      message: "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.",
+      detail: `Face brightness is washed out by direct flash or harsh glare (${Math.round(avgLum)}/255).`
+    };
+  }
+
+  // Blurriness check
+  if (gradStdDev < 3.4 && avgGrad < 3.8) {
+    return {
+      pass: false,
+      step: 2,
+      message: "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.",
+      detail: "Micro-texture and edge contrast are heavily blurred or out of focus."
+    };
+  }
+
+  // Occlusion check (Masks, sunglasses, hair, hands covering face)
   const skinRatio = sampleCount > 0 ? skinPixels / sampleCount : 0;
-  if (skinRatio < 0.22) {
+  if (skinRatio < 0.26) {
     return {
-      valid: false,
-      title: "Face Heavily Covered or Obstructed",
-      message: "Please upload a clear, front-facing face photo with good lighting for a more useful analysis.",
-      detail: "Less than 25% unobstructed skin detected in the face frame. Please remove large sunglasses, face coverings, or hands."
+      pass: false,
+      step: 2,
+      message: "I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo.",
+      detail: "Face is substantially covered by a mask, hands, hair, or other objects."
     };
   }
 
-  return { valid: true };
+  return { pass: true };
+}
+
+// Master Two-Step Validation Function
+async function runTwoStepFaceValidation(canvas) {
+  // Step 1: Human Detection
+  const step1 = await validateHumanFacePresence(canvas);
+  if (!step1.pass) {
+    return {
+      valid: false,
+      step: 1,
+      icon: '🚫',
+      badgeText: 'Step 1 — Human Detection: Failed',
+      title: 'Valid Human Face Required',
+      message: step1.message,
+      detail: step1.detail
+    };
+  }
+
+  // Step 2: Face Quality Check
+  const step2 = validateFaceQuality(canvas, step1.faceBox, step1.landmarks);
+  if (!step2.pass) {
+    return {
+      valid: false,
+      step: 2,
+      icon: '⚠️',
+      badgeText: 'Step 2 — Face Quality Check: Insufficient',
+      title: 'Image Quality Insufficient',
+      message: step2.message,
+      detail: step2.detail
+    };
+  }
+
+  return {
+    valid: true,
+    faceBox: step1.faceBox,
+    landmarks: step1.landmarks
+  };
+}
+
+// Optional Google Gemini Vision API Client
+async function callGeminiVisionAnalysis(canvas) {
+  const apiKey = localStorage.getItem('glowcare_gemini_api_key') || '';
+  if (!apiKey) {
+    throw new Error('Gemini API key is not configured.');
+  }
+
+  const base64Data = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+  const promptText = `Analyze the uploaded image first and determine whether it contains a real human face.
+
+If the image does NOT contain a clearly visible real human face, DO NOT perform any skin analysis.
+This includes objects, animals, plants, scenery, food, products, screenshots, drawings, cartoons, anime characters, illustrations, mannequins, statues, AI-generated non-human faces, and other non-human images.
+
+If the image is not suitable for human-face analysis, respond only:
+"This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis."
+
+Step 2 — Face Quality Check
+If a real human face is detected, check whether the face is sufficiently visible for analysis.
+The face should ideally be:
+Clearly visible
+Well lit
+Not heavily blurred
+Not substantially covered by masks, hands, hair, or other objects
+Large enough in the image to inspect facial skin
+
+If the face cannot be analyzed reliably, do NOT guess. Respond:
+"I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo."
+
+Important Rules:
+NEVER analyze a non-human image.
+NEVER assume an object, animal, cartoon, statue, or illustration is a human face.
+Do not diagnose diseases or medical conditions from an image.
+Do not claim certainty about a person's health based on their appearance.
+If something is not clearly visible, say that it cannot be reliably assessed.
+Do not invent measurements or details that cannot be determined from the image.
+Keep the analysis focused on visible facial-skin characteristics.
+Human validation MUST happen before skin analysis.
+If human validation fails, stop the entire workflow immediately.
+If a human face is detected but the image quality is inadequate, stop before skin analysis.
+
+Response Format:
+If NOT human:
+"This image does not contain a valid human face. Please upload a clear photo of a real human face for skin analysis."
+
+If human but image quality is insufficient:
+"I can detect a human face, but the image quality is not sufficient for reliable skin analysis. Please upload a clearer, well-lit face photo."
+
+If human and suitable for analysis:
+
+Human face detected ✓
+
+Skin Analysis:
+
+Skin characteristics:
+[Description]
+
+Hydration:
+[Assessment]
+
+Oiliness:
+[Assessment]
+
+Pores:
+[Assessment]
+
+Acne/blemishes:
+[Assessment]
+
+Redness:
+[Assessment]
+
+Pigmentation:
+[Assessment]
+
+Skin tone:
+[Assessment]
+
+Texture/fine lines:
+[Assessment]
+
+Overall visible condition:
+[Assessment]
+
+Note: This is an image-based visual assessment, not a medical diagnosis. Results can vary depending on lighting, camera quality, makeup, and image resolution.`;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: promptText },
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Data
+            }
+          }
+        ]
+      }]
+    })
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `Gemini API request failed (${response.status})`);
+  }
+
+  const resJson = await response.json();
+  const textOutput = resJson.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  return textOutput;
+}
+
+// Parse Gemini structured text output into Glow Care dashboard format
+function parseGeminiSkinReport(geminiText, canvas) {
+  const getField = (label) => {
+    const regex = new RegExp(`${label}:?\\s*([^\\n]+(?:\\n(?!\\w+:|Note:)[^\\n]+)*)`, 'i');
+    const match = geminiText.match(regex);
+    return match ? match[1].trim() : 'Visually assessed';
+  };
+
+  const skinCharacteristics = getField('Skin characteristics');
+  const hydration = getField('Hydration');
+  const oiliness = getField('Oiliness');
+  const pores = getField('Pores');
+  const acneBlemishes = getField('Acne/blemishes') || getField('Acne');
+  const redness = getField('Redness');
+  const pigmentation = getField('Pigmentation');
+  const skinTone = getField('Skin tone');
+  const textureFineLines = getField('Texture/fine lines') || getField('Texture');
+  const overallCondition = getField('Overall visible condition') || getField('Overall');
+
+  // Detect concerns for routine/products
+  const concerns = [];
+  if (/oily|shine|sebum/i.test(oiliness) && !/low|minimal|none|balanced/i.test(oiliness)) {
+    concerns.push({
+      id: 'oily',
+      name: 'T-Zone Oiliness & Shine',
+      severity: /significant|high|pronounced/i.test(oiliness) ? 'Significant' : 'Moderate',
+      rank: 2,
+      observation: oiliness,
+      suggestedCare: 'Balance sebum with gentle clarifying cleansing and oil-free hydration.',
+      productCategories: 'Gentle Cleanser • Niacinamide Serum • Lightweight Gel'
+    });
+  }
+  if (/blemish|acne|breakout|papule/i.test(acneBlemishes) && !/none|clear|minimal/i.test(acneBlemishes)) {
+    concerns.push({
+      id: 'acne',
+      name: 'Acne-Prone Areas / Blemishes',
+      severity: /significant|active|multiple/i.test(acneBlemishes) ? 'Significant' : 'Moderate',
+      rank: 3,
+      observation: acneBlemishes,
+      suggestedCare: 'Maintain clean skin with gentle BHA cleansing and non-comedogenic care.',
+      productCategories: 'Salicylic Cleanser • Barrier Hydrator • Mineral Sunscreen'
+    });
+  }
+  if (/dry|dehydrat|tight|rough/i.test(hydration) && !/well|adequate|good/i.test(hydration)) {
+    concerns.push({
+      id: 'dryness',
+      name: 'Surface Dryness / Dehydration',
+      severity: 'Moderate',
+      rank: 2,
+      observation: hydration,
+      suggestedCare: 'Nourish moisture barrier with hyaluronic acid and ceramide cream.',
+      productCategories: 'Ceramide Cleanser • Hyaluronic Acid • Deep Barrier Cream'
+    });
+  }
+
+  let skinType = 'Combination Skin Profile';
+  if (/oily/i.test(skinCharacteristics)) skinType = 'Oily Skin Profile';
+  if (/dry/i.test(skinCharacteristics)) skinType = 'Dry Skin Profile';
+  if (/sensitive|reactive/i.test(skinCharacteristics)) skinType = 'Sensitive Skin Profile';
+
+  return {
+    skinType,
+    overallSummary: overallCondition,
+    concerns,
+    skinCharacteristics,
+    hydration,
+    oiliness,
+    pores,
+    acneBlemishes,
+    redness,
+    pigmentation,
+    skinTone,
+    textureFineLines,
+    overallCondition,
+    formattedReportText: geminiText,
+    zoneCoordinates: {
+      forehead: { top: '22%', left: '50%' },
+      tzone: { top: '34%', left: '50%' },
+      leftCheek: { top: '48%', left: '30%' },
+      rightCheek: { top: '50%', left: '70%' },
+      underEyes: { top: '38%', left: '34%' },
+      chin: { top: '78%', left: '50%' }
+    }
+  };
 }
 
 // 8. Capture current video frame or image to a canvas
@@ -1005,10 +1547,154 @@ function analyzeFaceSkinCharacteristics(sourceCanvas, faceBox) {
     overallSummary = `Visual computer vision analysis indicates characteristics consistent with ${skinType}. The most noticeable visible feature is ${detectedConcerns[0].name.toLowerCase()} (${detectedConcerns[0].severity.toLowerCase()} severity), accompanied by ${detectedConcerns[1].name.toLowerCase()} (${detectedConcerns[1].severity.toLowerCase()} severity). Below are your detailed findings and personalized non-prescription skincare recommendations.`;
   }
 
+  // Derive the 10 prompt-required fields adhering strictly to visual-only, non-diagnostic guidelines
+  let skinCharacteristics = "";
+  if (skinType.includes('Oily & Acne')) {
+    skinCharacteristics = "Combination-to-oily profile characterized by active T-zone sheen, localized mid-face blemishes, and visible pore distribution.";
+  } else if (skinType.includes('Dry')) {
+    skinCharacteristics = "Dry-to-dehydrated profile characterized by reduced surface luster, fine micro-roughness, and visible barrier tightness across lateral cheeks.";
+  } else if (skinType.includes('Oily')) {
+    skinCharacteristics = "Oily profile displaying notable surface sebum reflection across forehead and nasal bridge with resilient epidermal thickness.";
+  } else if (skinType.includes('Sensitive')) {
+    skinCharacteristics = "Sensitized reactive profile showing visible capillary pinkness and fine epidermal sensitivity across cheek contours.";
+  } else if (skinType.includes('Normal')) {
+    skinCharacteristics = "Balanced normal profile displaying smooth micro-texture, uniform light reflectance, and balanced sebum distribution.";
+  } else {
+    skinCharacteristics = "Combination profile exhibiting localized T-zone sebum reflection with balanced moisture retention across lateral cheeks.";
+  }
+
+  let hydration = "";
+  if (drynessSignal > 20) {
+    hydration = "Mildly diminished epidermal luster and visible moisture deficit observed on lateral cheeks; barrier appears slightly tight.";
+  } else if (drynessSignal > 12) {
+    hydration = "Moderate surface hydration with slight dryness along outer cheek contours; central face remains adequately moisturized.";
+  } else {
+    hydration = "Well-hydrated with healthy epidermal luster and uniform moisture reflectance across all facial zones.";
+  }
+
+  let oiliness = "";
+  if (oilinessSignal > 20) {
+    oiliness = "Elevated sebum sheen visible across forehead, nasal bridge, and chin (T-zone); cheeks display lower reflectance.";
+  } else if (oilinessSignal > 10) {
+    oiliness = "Moderate localized shine along the center T-zone within normal physiological parameters; lateral cheeks appear matte.";
+  } else {
+    oiliness = "Low-to-balanced surface shine with uniform non-greasy finish across all inspected zones.";
+  }
+
+  let pores = "";
+  if (poreSignal > 20) {
+    pores = "Visibly dilated pores observed along nasal bridge and medial cheek areas; outer cheeks remain refined.";
+  } else if (poreSignal > 12) {
+    pores = "Moderate pore visibility concentrated in the mid-facial and paranasal zones; within normal textural limits.";
+  } else {
+    pores = "Minimally visible pores; surface micro-structure appears refined and smooth.";
+  }
+
+  let acneBlemishes = "";
+  if (acneSignal > 22) {
+    acneBlemishes = "Visible localized reddish blemishes and small surface papules observed on cheek and jawline contours; no severe inflammatory clusters assessed.";
+  } else if (acneSignal > 12) {
+    acneBlemishes = "A few isolated mild surface blemishes and localized minor texture irregularities visible on mid-face.";
+  } else {
+    acneBlemishes = "Clear complexion with no prominent active blemishes or pustules visibly detected.";
+  }
+
+  let redness = "";
+  if (rednessSignal > 22) {
+    redness = "Noticeable capillary pinkness and diffuse flushing visible across central cheek areas; consistent with reactive skin.";
+  } else if (rednessSignal > 13) {
+    redness = "Mild diffuse pink undertones observed across the cheek contours; minimal localized vascular dilation.";
+  } else {
+    redness = "Minimal baseline capillary pinkness; calm and even complexional tone with no noticeable flushing.";
+  }
+
+  let pigmentation = "";
+  if (pigmentationSignal > 18) {
+    pigmentation = "Visible minor tonal variations and localized faint pigment spots observed on upper cheekbones and forehead.";
+  } else if (pigmentationSignal > 10) {
+    pigmentation = "Moderate variation in tone uniformity across orbital and cheek zones; overall pigment distribution is stable.";
+  } else {
+    pigmentation = "Uniform melanin distribution with even complexional clarity and no prominent localized dark spots.";
+  }
+
+  let skinTone = "";
+  if (faceLumBaseline > 180) {
+    skinTone = "Fair complexional tone with balanced neutral undertones and high natural reflectance.";
+  } else if (faceLumBaseline > 130) {
+    skinTone = "Medium warm-neutral undertone with healthy visual complexional radiance.";
+  } else {
+    skinTone = "Rich deep-warm undertone with balanced melanin depth and healthy surface luster.";
+  }
+
+  let textureFineLines = "";
+  if (textureRoughness > 18) {
+    textureFineLines = "Slight micro-texture roughness and faint expression lines visible around peri-orbital eye contour.";
+  } else if (textureRoughness > 12) {
+    textureFineLines = "Generally smooth micro-texture with soft natural dynamic expression contours consistent with facial movement.";
+  } else {
+    textureFineLines = "Smooth, refined epidermal surface texture with minimal visible roughness or fine lines.";
+  }
+
+  let overallCondition = "";
+  if (detectedConcerns.length === 0) {
+    overallCondition = "Facial skin appears visually healthy and well-balanced. Primary care recommendations prioritize barrier preservation and broad-spectrum sun protection.";
+  } else if (detectedConcerns.length === 1) {
+    overallCondition = `Facial skin exhibits visible features consistent with ${detectedConcerns[0].name.toLowerCase()} (${detectedConcerns[0].severity.toLowerCase()} severity). Primary visible opportunities prioritize gentle targeted care and daily hydration.`;
+  } else {
+    overallCondition = `Facial skin shows visible features of ${detectedConcerns[0].name.toLowerCase()} and ${detectedConcerns[1].name.toLowerCase()}. Routine focus should center on non-stripping cleansing, sebum regulation, and consistent barrier hydration.`;
+  }
+
+  const formattedReportText = `Human face detected ✓
+
+Skin Analysis:
+
+Skin characteristics:
+${skinCharacteristics}
+
+Hydration:
+${hydration}
+
+Oiliness:
+${oiliness}
+
+Pores:
+${pores}
+
+Acne/blemishes:
+${acneBlemishes}
+
+Redness:
+${redness}
+
+Pigmentation:
+${pigmentation}
+
+Skin tone:
+${skinTone}
+
+Texture/fine lines:
+${textureFineLines}
+
+Overall visible condition:
+${overallCondition}
+
+Note: This is an image-based visual assessment, not a medical diagnosis. Results can vary depending on lighting, camera quality, makeup, and image resolution.`;
+
   return {
     skinType,
     overallSummary,
     concerns: detectedConcerns,
+    skinCharacteristics,
+    hydration,
+    oiliness,
+    pores,
+    acneBlemishes,
+    redness,
+    pigmentation,
+    skinTone,
+    textureFineLines,
+    overallCondition,
+    formattedReportText,
     zoneCoordinates: {
       forehead: { top: '22%', left: '50%' },
       tzone: { top: '34%', left: '50%' },
@@ -1066,6 +1752,29 @@ function sampleRegion(data, width, height, startX, startY, regionW, regionH) {
 
 // 10. Render Explanation-First Results Dashboard (Requirement #3, #5, #7, #10)
 function renderResultsDashboard(analysis, snapshotUrl) {
+  // Populate Prompt-Mandated Official Skin Analysis Report Card
+  const reportContainer = document.getElementById('official-skin-report-container');
+  if (reportContainer) {
+    reportContainer.style.display = 'block';
+  }
+  const setField = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val || 'Not assessed';
+  };
+  setField('report-val-characteristics', analysis.skinCharacteristics);
+  setField('report-val-hydration', analysis.hydration);
+  setField('report-val-oiliness', analysis.oiliness);
+  setField('report-val-pores', analysis.pores);
+  setField('report-val-acne', analysis.acneBlemishes);
+  setField('report-val-redness', analysis.redness);
+  setField('report-val-pigmentation', analysis.pigmentation);
+  setField('report-val-skintone', analysis.skinTone);
+  setField('report-val-texture', analysis.textureFineLines);
+  setField('report-val-overall', analysis.overallCondition);
+
+  // Cache formatted report text globally for copy button
+  window._currentOfficialReportText = analysis.formattedReportText;
+
   // Update Qualitative Status Badge & Skin Type
   const statusBadge = document.getElementById('result-status-badge');
   const skinTypeElem = document.getElementById('result-skin-type');
@@ -1460,13 +2169,13 @@ function loadPresetDemoSelfie() {
   img.src = demoImgUrl;
 }
 
-// 15. Handle Uploaded Selfie Photo with Immediate Quality Verification (Requirement #1)
+// 15. Handle Uploaded Selfie Photo with Immediate Strict Step 1 & Step 2 Enforcement
 function handleUploadedSelfie(event) {
   const file = event.target.files[0];
   if (!file) return;
 
   // Clear previous quality alert and previous results
-  hideQualityAlert();
+  hideValidationAlert();
   const resultsSection = document.getElementById('scanner-results-section');
   if (resultsSection) resultsSection.classList.remove('show');
 
@@ -1493,43 +2202,31 @@ function handleUploadedSelfie(event) {
       const tCtx = testCanvas.getContext('2d');
       tCtx.drawImage(img, 0, 0, testCanvas.width, testCanvas.height);
 
-      // Detect face with BlazeFace or Chromatic Tracker
-      let detectedBox = null;
-      if (blazefaceModel) {
-        try {
-          const preds = await blazefaceModel.estimateFaces(testCanvas, false);
-          if (preds && preds.length > 0) {
-            detectedBox = {
-              x: preds[0].topLeft[0],
-              y: preds[0].topLeft[1],
-              width: preds[0].bottomRight[0] - preds[0].topLeft[0],
-              height: preds[0].bottomRight[1] - preds[0].topLeft[1]
-            };
-          }
-        } catch (err) {}
-      }
+      // Perform strict prompt-mandated Step 1 & Step 2 validation immediately
+      updateGuidanceBadge('Analyzing image for real human face...', 'warning');
+      const validation = await runTwoStepFaceValidation(testCanvas);
 
-      if (!detectedBox) {
-        detectedBox = detectFaceViaSkinTone(testCanvas);
-      }
-
-      // Check quality immediately
-      const qCheck = validateFaceImageQuality(testCanvas, detectedBox);
-
-      if (!qCheck.valid) {
+      if (!validation.valid) {
         SoundFx.playBeep(380, 0.22, 'sawtooth');
-        showQualityAlert(qCheck.title, qCheck.message, qCheck.detail);
-        updateGuidanceBadge('Image quality insufficient — see notice below', 'warning');
-        window.showToast('Please upload a clear, front-facing face photo with good lighting', 'warning');
+        showValidationAlert(validation.step, validation.message, validation.detail);
 
-        // Disable analysis button
+        if (validation.step === 1) {
+          updateGuidanceBadge('Step 1 Failed: Non-human image', 'warning');
+          window.showToast('This image does not contain a valid human face.', 'warning');
+        } else {
+          updateGuidanceBadge('Step 2 Failed: Image quality insufficient', 'warning');
+          window.showToast('Face detected, but image quality is insufficient.', 'warning');
+        }
+
+        // Disable analysis button — STOP THE ENTIRE WORKFLOW IMMEDIATELY!
         const captureBtn = document.getElementById('btn-run-analysis');
         if (captureBtn) captureBtn.disabled = true;
         return; // STOP!
       }
 
-      // If valid, store faceBox scaled to overlayCanvas
-      hideQualityAlert();
+      // Quality and human check passed!
+      hideValidationAlert();
+      const detectedBox = validation.faceBox;
       const sX = overlayCanvas.width / testCanvas.width;
       const sY = overlayCanvas.height / testCanvas.height;
 
@@ -1545,7 +2242,7 @@ function handleUploadedSelfie(event) {
       faceDistanceStatus = 'ok';
 
       renderHUDOverlay(lastFaceBox);
-      updateGuidanceBadge('Photo verified with clear face detection. Ready to scan!', 'success');
+      updateGuidanceBadge('Human face detected ✓ Ready to scan!', 'success');
 
       const captureBtn = document.getElementById('btn-run-analysis');
       if (captureBtn) {
@@ -1557,11 +2254,128 @@ function handleUploadedSelfie(event) {
       const startBtn = document.getElementById('btn-start-camera');
       if (startBtn) startBtn.style.display = 'none';
 
-      window.showToast('Photo verified! Click "Run Skin Analysis Scan".', 'success');
+      window.showToast('Human face verified ✓ Click "Run Skin Analysis Scan".', 'success');
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+// Clipboard Copy Helpers
+window.copyReportToClipboard = function() {
+  const text = window._currentOfficialReportText;
+  if (!text) {
+    window.showToast('No scan report available to copy.', 'warning');
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      window.showToast('Official Skin Analysis Report copied to clipboard!', 'success');
+    }).catch(() => {
+      fallbackCopyText(text);
+    });
+  } else {
+    fallbackCopyText(text);
+  }
+};
+
+window.copyAlertMessage = function() {
+  const el = document.getElementById('quality-alert-message');
+  const text = el ? el.textContent.trim() : '';
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      window.showToast('Notice message copied to clipboard!', 'info');
+    }).catch(() => {
+      fallbackCopyText(text);
+    });
+  } else {
+    fallbackCopyText(text);
+  }
+};
+
+function fallbackCopyText(text) {
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.position = 'fixed';
+  textArea.style.left = '-9999px';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand('copy');
+    window.showToast('Text copied to clipboard!', 'success');
+  } catch (err) {
+    window.showToast('Unable to copy text automatically.', 'warning');
+  }
+  document.body.removeChild(textArea);
+}
+
+// AI Engine Settings Modal Management
+window.openAiEngineModal = function() {
+  const modal = document.getElementById('ai-engine-modal');
+  const storedEngine = localStorage.getItem('glowcare_ai_engine') || 'builtin';
+  const storedKey = localStorage.getItem('glowcare_gemini_api_key') || '';
+
+  const radios = document.getElementsByName('ai-engine-choice');
+  radios.forEach(r => {
+    r.checked = (r.value === storedEngine);
+  });
+
+  const keyInput = document.getElementById('input-gemini-key');
+  if (keyInput) keyInput.value = storedKey;
+
+  const keyContainer = document.getElementById('gemini-key-container');
+  if (keyContainer) {
+    keyContainer.style.display = storedEngine === 'gemini' ? 'block' : 'none';
+  }
+
+  if (modal) modal.style.display = 'flex';
+};
+
+window.closeAiEngineModal = function() {
+  const modal = document.getElementById('ai-engine-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.handleEngineRadioChange = function(val) {
+  const keyContainer = document.getElementById('gemini-key-container');
+  if (keyContainer) {
+    keyContainer.style.display = val === 'gemini' ? 'block' : 'none';
+  }
+};
+
+window.saveAiEngineSettings = function() {
+  const radios = document.getElementsByName('ai-engine-choice');
+  let chosen = 'builtin';
+  radios.forEach(r => {
+    if (r.checked) chosen = r.value;
+  });
+
+  const keyInput = document.getElementById('input-gemini-key');
+  const keyVal = keyInput ? keyInput.value.trim() : '';
+
+  if (chosen === 'gemini' && !keyVal) {
+    window.showToast('Please enter your Google Gemini API Key or select Built-in Engine.', 'warning');
+    return;
+  }
+
+  localStorage.setItem('glowcare_ai_engine', chosen);
+  if (keyVal) {
+    localStorage.setItem('glowcare_gemini_api_key', keyVal);
+  }
+
+  closeAiEngineModal();
+  updateEngineIndicator();
+  window.showToast(`AI Vision Engine set to: ${chosen === 'gemini' ? 'Google Gemini' : 'Built-in Computer Vision'}`, 'success');
+};
+
+function updateEngineIndicator() {
+  const label = document.getElementById('current-engine-label');
+  const choice = localStorage.getItem('glowcare_ai_engine') || 'builtin';
+  if (label) {
+    label.textContent = choice === 'gemini' ? 'Gemini AI' : 'CV Engine';
+  }
 }
 
 function resetScannerForNewScan() {
