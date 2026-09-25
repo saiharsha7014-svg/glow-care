@@ -92,6 +92,24 @@
         </div>
       </div>
 
+      <!-- Image Quality / Face Validation Alert Banner -->
+      <div id="quality-alert-banner" class="quality-alert-banner" style="display:none;">
+        <div class="quality-alert-icon">⚠️</div>
+        <div class="quality-alert-content" style="flex:1;">
+          <div id="quality-alert-title" class="quality-alert-title">Image Quality Check Notice</div>
+          <div id="quality-alert-message" class="quality-alert-message">
+            Please upload a clear, front-facing face photo with good lighting for a more useful analysis.
+          </div>
+          <div id="quality-alert-details" class="quality-alert-details"></div>
+          <div style="margin-top:0.8rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+            <button id="btn-alert-retry" class="btn btn-sm btn-primary" onclick="resetScannerForNewScan()">Try Again with Front Camera</button>
+            <label for="file-upload-selfie" class="btn btn-sm btn-outline-primary" style="cursor:pointer; margin:0;">
+              Upload Different Photo
+            </label>
+          </div>
+        </div>
+      </div>
+
       <!-- Camera Console & Guidance Grid -->
       <div class="scanner-interface-grid">
         
@@ -235,28 +253,27 @@
       <!-- ================================================================= -->
       <section id="scanner-results-section" class="scanner-results-section">
         
-        <!-- Header Card: Score & Primary Classification -->
+        <!-- Header Card: Qualitative Inspection & Summary -->
         <div class="results-header-card">
           <div class="results-top-grid">
-            <!-- Score Gauge -->
-            <div class="score-circle-container">
-              <svg class="score-svg" viewBox="0 0 140 140">
-                <circle class="score-bg-ring" cx="70" cy="70" r="60"></circle>
-                <circle id="score-gauge-ring" class="score-val-ring" cx="70" cy="70" r="60"></circle>
-              </svg>
-              <div class="score-number-inside">
-                <span id="score-gauge-val" class="val">84</span>
-                <span class="label">Skin Score</span>
+            <!-- Qualitative Analysis Summary Badge Card -->
+            <div class="analysis-status-card">
+              <div class="status-icon-circle">🔬</div>
+              <div class="status-card-meta">
+                <span class="status-card-label">Computer Vision Inspection</span>
+                <span id="result-status-badge" class="status-badge-qualitative">Analysis Complete</span>
               </div>
             </div>
 
             <!-- Summary Text -->
             <div class="results-summary-info">
-              <span id="result-skin-type" class="skin-type-badge-large">Combination Skin</span>
-              <h2>Skin Analysis Result</h2>
-              <p id="result-summary-text" class="results-summary-text">
-                Your skin reflects a combination moisture profile with moderate T-zone oiliness and noticeable cheek pores. Below are your mapped concerns and clinical solutions.
-              </p>
+              <div class="section-tag" style="margin-bottom:0.4rem;">FACE SKIN ANALYSIS</div>
+              <span id="result-skin-type" class="skin-type-badge-large">Combination Skin Profile</span>
+              <h2 style="margin:0.2rem 0 0.5rem;">Visual Observation Report</h2>
+              <div style="background:var(--bg-main); border-radius:var(--radius-sm); padding:0.8rem 1rem; border-left:3px solid var(--primary); margin-top:0.4rem;">
+                <strong style="color:var(--text-primary); font-size:0.88rem;">Overall:</strong>
+                <p id="result-summary-text" class="results-summary-text" style="margin:0.2rem 0 0;"></p>
+              </div>
             </div>
 
             <!-- Actions -->
@@ -273,7 +290,7 @@
           <!-- Left: Face Snapshot with Interactive Hotspot Pins -->
           <div class="face-map-container">
             <div class="face-map-header">
-              <h3 style="font-size:1.15rem; font-weight:700;">Detected Skin Areas</h3>
+              <h3 style="font-size:1.15rem; font-weight:700;">Analyzed Face Snapshot</h3>
               <span style="font-size:0.8rem; color:var(--text-muted);">Hover pins for details</span>
             </div>
             
@@ -284,17 +301,35 @@
               </div>
             </div>
             <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.8rem; text-align:center;">
-              Interactive overlay mapping visible areas of oiliness, redness, blemishes and dark circles.
+              Interactive facial zone overlay indicating monitored areas.
             </div>
           </div>
 
-          <!-- Right: Detected Concerns List with Concern Level -->
+          <!-- Right: Detected Concerns List with Explanation-First Format -->
           <div class="concerns-breakdown-card">
-            <h3 style="font-size:1.25rem; font-weight:700; margin-bottom:0.2rem;">Visible Concerns Breakdown</h3>
-            <p style="font-size:0.88rem; color:var(--text-secondary);">Identified characteristics ranked by concern severity.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.5rem;">
+              <h3 style="font-size:1.25rem; font-weight:700; margin:0;">Main Skin Concerns</h3>
+              <span style="font-size:0.74rem; color:var(--text-muted); background:var(--bg-main); padding:0.25rem 0.65rem; border-radius:12px; border:1px solid var(--border-light);">Qualitative Findings Only (No Guessed Scores)</span>
+            </div>
+            <p style="font-size:0.86rem; color:var(--text-secondary); margin-bottom:1rem;">
+              Only visibly observed characteristics supported by image analysis are reported below with qualitative severity & care guidance.
+            </p>
             
             <div id="concerns-list-container" class="concerns-list">
-              <!-- Dynamically Injected -->
+              <!-- Dynamically Injected explanation-first cards -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Medical Advice Safety Box -->
+        <div class="medical-referral-box" style="margin: 1.5rem 0 2rem;">
+          <div style="display:flex; align-items:flex-start; gap:0.9rem;">
+            <div style="font-size:1.4rem; line-height:1;">🩺</div>
+            <div>
+              <strong style="color:var(--text-primary); font-size:0.95rem;">Important Clinical Notice:</strong>
+              <p style="font-size:0.86rem; color:var(--text-secondary); margin:0.3rem 0 0; line-height:1.5;">
+                This is an AI-based visual skin analysis and not a medical diagnosis. It does not diagnose skin conditions, infections, dermatitis, eczema, psoriasis, or rosacea. If you have persistent, painful, rapidly changing, or concerning skin lesions, please consult a qualified dermatologist for an in-person clinical examination.
+              </p>
             </div>
           </div>
         </div>
@@ -335,12 +370,13 @@
         <div id="matched-products-section" class="matched-products-section">
           <div class="recommendations-banner">
             <div>
-              <h3 style="font-size:1.3rem; font-weight:700; margin-bottom:0.25rem;">✨ Personalized Product Recommendations</h3>
-              <p style="font-size:0.9rem; color:var(--text-secondary);">
-                These products were automatically selected to target your specific skin type and highest-priority concerns.
+              <span class="section-tag" style="background:rgba(226,123,115,0.12); color:var(--primary);">Targeted Skincare Regimen</span>
+              <h3 style="font-size:1.3rem; font-weight:700; margin:0.25rem 0;">✨ Recommended for Your Visible Concerns</h3>
+              <p style="font-size:0.88rem; color:var(--text-secondary); max-width:680px; margin:0;">
+                Showing 3–5 targeted products selected specifically for your detected skin concerns. All prices in Indian Rupees (INR).
               </p>
             </div>
-            <a href="products.html?filter=matched" class="btn btn-outline-primary btn-sm">Explore All Matching</a>
+            <a href="products.html" class="btn btn-outline-primary btn-sm">Explore All Products</a>
           </div>
 
           <div id="matched-products-grid" class="products-grid">

@@ -801,3 +801,244 @@
     align-items: stretch;
   }
 }
+
+/* ==========================================================================
+   Image Quality Validation Notice & Explanation-First Cards
+   ========================================================================== */
+
+/* Image Quality Check Notice Alert */
+.quality-alert-banner {
+  background: #FFF5F5;
+  border: 1.5px solid #FEB2B2;
+  border-radius: var(--radius-md);
+  padding: 1.4rem 1.8rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.2rem;
+  box-shadow: 0 6px 18px rgba(229, 62, 62, 0.08);
+  animation: fadeIn 0.3s ease-out;
+}
+
+[data-theme="dark"] .quality-alert-banner {
+  background: rgba(229, 62, 62, 0.12);
+  border-color: rgba(229, 62, 62, 0.4);
+}
+
+.quality-alert-icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.quality-alert-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #C53030;
+  margin-bottom: 0.35rem;
+}
+
+[data-theme="dark"] .quality-alert-title {
+  color: #FC8181;
+}
+
+.quality-alert-message {
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+
+.quality-alert-details {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Qualitative Status Badge Card */
+.analysis-status-card {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  padding: 1.2rem 1.5rem;
+  border-radius: var(--radius-md);
+}
+
+.status-icon-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.status-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.status-card-label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.status-badge-qualitative {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2A9D8F;
+}
+
+/* Explanation-First Concern Card */
+.concern-card-detailed {
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.concern-card-detailed:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.concern-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.concern-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.concern-title-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.severity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.severity-significant {
+  background: rgba(230, 57, 70, 0.15);
+  color: #E63946;
+  border: 1px solid rgba(230, 57, 70, 0.3);
+}
+
+.severity-moderate {
+  background: rgba(244, 162, 97, 0.15);
+  color: #E76F51;
+  border: 1px solid rgba(244, 162, 97, 0.3);
+}
+
+.severity-mild {
+  background: rgba(82, 183, 136, 0.15);
+  color: #2A9D8F;
+  border: 1px solid rgba(82, 183, 136, 0.3);
+}
+
+.severity-not-detected {
+  background: rgba(69, 123, 157, 0.12);
+  color: #457B9D;
+  border: 1px solid rgba(69, 123, 157, 0.25);
+}
+
+.severity-unable {
+  background: rgba(140, 150, 160, 0.15);
+  color: #718096;
+  border: 1px solid rgba(140, 150, 160, 0.3);
+}
+
+.observation-box {
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  border-left: 3px solid var(--primary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.care-box {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.care-box strong {
+  color: var(--text-primary);
+}
+
+.categories-line {
+  font-size: 0.8rem;
+  color: var(--primary);
+  font-weight: 600;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--border-light);
+}
+
+/* Product Recommendation Card Enhancements */
+.why-suitable-badge {
+  background: rgba(226, 123, 115, 0.08);
+  border-left: 3px solid var(--primary);
+  padding: 0.6rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin: 0.6rem 0;
+}
+
+.product-usage-note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
+}
+
+.product-precaution-tag {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+
+.medical-referral-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-left: 4px solid #457B9D;
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.6rem;
+}
+

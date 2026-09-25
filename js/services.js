@@ -65,7 +65,7 @@ function renderServicesGrid() {
         <div class="service-footer">
           <div>
             <div style="font-size:0.75rem; color:var(--text-muted);">Session Price</div>
-            <div class="service-price">$${s.price.toFixed(2)}</div>
+            <div class="service-price">${window.formatCurrency(s.price)}</div>
           </div>
           <a href="book.html?service=${s.id}" class="btn btn-primary">Book Now</a>
         </div>

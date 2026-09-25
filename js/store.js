@@ -3,6 +3,16 @@
  * Handles Products, Services, Appointments, User Auth, Scan History, Cart & Favorites
  */
 
+// Global Indian Rupee (INR) Currency Formatter
+window.formatCurrency = function(amount) {
+  const num = Number(amount) || 0;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(num);
+};
+
 const STORAGE_KEYS = {
   PRODUCTS: 'glowcare_products',
   SERVICES: 'glowcare_services',
@@ -23,7 +33,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-1',
     name: 'Clarifying Salicylic Acid Gentle Gel Cleanser',
     category: 'Cleansers',
-    price: 24.00,
+    price: 599,
     rating: 4.8,
     reviewsCount: 142,
     image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=700&q=80',
@@ -39,7 +49,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-2',
     name: 'Ultra-Hydrating Ceramide Milk Cleanser',
     category: 'Cleansers',
-    price: 26.00,
+    price: 649,
     rating: 4.9,
     reviewsCount: 189,
     image: 'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=700&q=80',
@@ -55,7 +65,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-3',
     name: 'Oil-Free Mattifying Water Gel Moisturizer',
     category: 'Moisturizers',
-    price: 28.50,
+    price: 699,
     rating: 4.7,
     reviewsCount: 215,
     image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=700&q=80',
@@ -71,7 +81,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-4',
     name: 'Deep Barrier Ceramide Night Recovery Cream',
     category: 'Moisturizers',
-    price: 36.00,
+    price: 899,
     rating: 4.9,
     reviewsCount: 97,
     image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=700&q=80',
@@ -87,7 +97,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-5',
     name: 'Invisible Glow Shield Mineral Sunscreen SPF 50+',
     category: 'Sunscreens',
-    price: 32.00,
+    price: 799,
     rating: 4.9,
     reviewsCount: 310,
     image: 'https://images.unsplash.com/photo-1567928815104-b7980ee5032e?auto=format&fit=crop&w=700&q=80',
@@ -103,7 +113,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-6',
     name: 'Matte Oil-Control Fluid Sunscreen SPF 45',
     category: 'Sunscreens',
-    price: 29.00,
+    price: 749,
     rating: 4.6,
     reviewsCount: 88,
     image: 'https://images.unsplash.com/photo-1556228852-80b6e5eeff06?auto=format&fit=crop&w=700&q=80',
@@ -119,7 +129,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-7',
     name: '10% Niacinamide + Zinc 1% Pore Refining Serum',
     category: 'Serums',
-    price: 22.00,
+    price: 549,
     rating: 4.8,
     reviewsCount: 420,
     image: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=700&q=80',
@@ -135,7 +145,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-8',
     name: '15% Vitamin C + Alpha Arbutin Brightening Elixir',
     category: 'Brightening',
-    price: 42.00,
+    price: 999,
     rating: 4.9,
     reviewsCount: 260,
     image: 'https://images.unsplash.com/photo-1608248597359-0a955743b194?auto=format&fit=crop&w=700&q=80',
@@ -151,7 +161,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-9',
     name: '2% BHA Liquid Exfoliant & Blackhead Clarifier',
     category: 'Acne Care',
-    price: 34.00,
+    price: 849,
     rating: 4.9,
     reviewsCount: 512,
     image: 'https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?auto=format&fit=crop&w=700&q=80',
@@ -167,7 +177,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-10',
     name: '2% Pure Hyaluronic Acid + B5 Moisture Booster',
     category: 'Hydration',
-    price: 25.00,
+    price: 629,
     rating: 4.8,
     reviewsCount: 340,
     image: 'https://images.unsplash.com/photo-1617897903246-719242758050?auto=format&fit=crop&w=700&q=80',
@@ -183,7 +193,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-11',
     name: 'Caffeine 5% + Multi-Peptide Under-Eye Awakening Gel',
     category: 'Serums',
-    price: 27.00,
+    price: 699,
     rating: 4.7,
     reviewsCount: 165,
     image: 'https://images.unsplash.com/photo-1512290900672-1f55b93475d4?auto=format&fit=crop&w=700&q=80',
@@ -199,7 +209,7 @@ const DEFAULT_PRODUCTS = [
     id: 'prod-12',
     name: 'Centella Cica Soothing Barrier Rescue Balm',
     category: 'Skin Repair',
-    price: 31.00,
+    price: 799,
     rating: 4.9,
     reviewsCount: 178,
     image: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=700&q=80',
@@ -220,7 +230,7 @@ const DEFAULT_SERVICES = [
     name: 'Hydra-Glow Deep Pore Facial',
     category: 'Facial',
     duration: '60 mins',
-    price: 85.00,
+    price: 1999,
     rating: 4.9,
     reviewsCount: 210,
     image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=700&q=80',
@@ -233,7 +243,7 @@ const DEFAULT_SERVICES = [
     name: 'Advanced Acne Care Therapy',
     category: 'Acne Care',
     duration: '75 mins',
-    price: 95.00,
+    price: 2299,
     rating: 4.9,
     reviewsCount: 174,
     image: 'https://images.unsplash.com/photo-1512290903029-450f6ee47738?auto=format&fit=crop&w=700&q=80',
@@ -246,7 +256,7 @@ const DEFAULT_SERVICES = [
     name: 'Deep Barrier Skin Care & Cryo Infusion',
     category: 'Skin Care',
     duration: '60 mins',
-    price: 90.00,
+    price: 3499,
     rating: 4.8,
     reviewsCount: 130,
     image: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=700&q=80',
@@ -259,7 +269,7 @@ const DEFAULT_SERVICES = [
     name: 'Botanical Scalp & Hair Detox',
     category: 'Hair Care',
     duration: '50 mins',
-    price: 70.00,
+    price: 3999,
     rating: 4.8,
     reviewsCount: 88,
     image: 'https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&w=700&q=80',
@@ -272,7 +282,7 @@ const DEFAULT_SERVICES = [
     name: 'Royal Bridal Glow Makeup & Consultation',
     category: 'Bridal Makeup',
     duration: '120 mins',
-    price: 180.00,
+    price: 4499,
     rating: 5.0,
     reviewsCount: 312,
     image: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=700&q=80',
@@ -285,7 +295,7 @@ const DEFAULT_SERVICES = [
     name: 'Couture Hair Styling & Updos',
     category: 'Hair Styling',
     duration: '60 mins',
-    price: 75.00,
+    price: 1699,
     rating: 4.7,
     reviewsCount: 95,
     image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=700&q=80',
@@ -298,7 +308,7 @@ const DEFAULT_SERVICES = [
     name: 'Luxury Organic Gel Manicure',
     category: 'Manicure',
     duration: '45 mins',
-    price: 45.00,
+    price: 999,
     rating: 4.9,
     reviewsCount: 140,
     image: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=700&q=80',
@@ -311,7 +321,7 @@ const DEFAULT_SERVICES = [
     name: 'Herbal Dead Sea Pedicure Treatment',
     category: 'Pedicure',
     duration: '50 mins',
-    price: 55.00,
+    price: 1299,
     rating: 4.8,
     reviewsCount: 119,
     image: 'https://images.unsplash.com/photo-1519415510236-718bdfcd89c8?auto=format&fit=crop&w=700&q=80',
@@ -324,7 +334,7 @@ const DEFAULT_SERVICES = [
     name: 'Deep Aromatherapy Relaxation Spa',
     category: 'Spa',
     duration: '90 mins',
-    price: 120.00,
+    price: 2999,
     rating: 5.0,
     reviewsCount: 245,
     image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=700&q=80',
@@ -337,7 +347,7 @@ const DEFAULT_SERVICES = [
     name: 'Red Carpet Evening Glam Makeup',
     category: 'Makeup',
     duration: '60 mins',
-    price: 85.00,
+    price: 1999,
     rating: 4.9,
     reviewsCount: 160,
     image: 'https://images.unsplash.com/photo-1503236823255-94609f598e71?auto=format&fit=crop&w=700&q=80',
@@ -385,7 +395,7 @@ const DEFAULT_APPOINTMENTS = [
     customerEmail: 'demo@glowcare.com',
     customerPhone: '+1 (555) 234-5678',
     notes: 'Please focus on T-zone blackheads and extraction.',
-    price: 85.00,
+    price: 1999,
     status: 'Confirmed',
     createdAt: '2026-09-24T14:30:00Z'
   },
@@ -399,7 +409,7 @@ const DEFAULT_APPOINTMENTS = [
     customerEmail: 'marcus@example.com',
     customerPhone: '+1 (555) 432-8765',
     notes: 'Frequent breakouts along cheek area.',
-    price: 95.00,
+    price: 2299,
     status: 'Pending',
     createdAt: '2026-09-25T09:15:00Z'
   },
@@ -413,7 +423,7 @@ const DEFAULT_APPOINTMENTS = [
     customerEmail: 'emily@example.com',
     customerPhone: '+1 (555) 998-1122',
     notes: 'Trial for wedding in December. Dewy makeup preference.',
-    price: 180.00,
+    price: 4499,
     status: 'Confirmed',
     createdAt: '2026-09-20T11:00:00Z'
   },
@@ -427,7 +437,7 @@ const DEFAULT_APPOINTMENTS = [
     customerEmail: 'demo@glowcare.com',
     customerPhone: '+1 (555) 234-5678',
     notes: 'Focus on neck and shoulder tension.',
-    price: 120.00,
+    price: 2999,
     status: 'Completed',
     createdAt: '2026-09-18T16:00:00Z'
   }
@@ -439,6 +449,22 @@ class GlowCareStore {
   }
 
   init() {
+    // Auto-migrate previous USD currency to INR in localStorage
+    try {
+      const curProds = JSON.parse(localStorage.getItem(STORAGE_KEYS.PRODUCTS));
+      if (curProds && curProds.length > 0 && curProds[0].price < 150) {
+        localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS));
+      }
+      const curServs = JSON.parse(localStorage.getItem(STORAGE_KEYS.SERVICES));
+      if (curServs && curServs.length > 0 && curServs[0].price < 250) {
+        localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(DEFAULT_SERVICES));
+      }
+      const curAppts = JSON.parse(localStorage.getItem(STORAGE_KEYS.APPOINTMENTS));
+      if (curAppts && curAppts.length > 0 && curAppts[0].price < 250) {
+        localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(DEFAULT_APPOINTMENTS));
+      }
+    } catch (e) {}
+
     if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(DEFAULT_PRODUCTS));
     }

@@ -78,7 +78,7 @@ function renderAppointmentsList() {
             <div style="display:flex; flex-wrap:wrap; gap:1.2rem; font-size:0.88rem; color:var(--text-secondary);">
               <span>📅 <strong>Date:</strong> ${a.date}</span>
               <span>⏰ <strong>Time:</strong> ${a.time}</span>
-              <span>💵 <strong>Amount:</strong> $${Number(a.price).toFixed(2)}</span>
+              <span>💵 <strong>Amount:</strong> ${window.formatCurrency(a.price)}</span>
             </div>
             ${a.notes ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem;">Note: ${a.notes}</div>` : ''}
           </div>

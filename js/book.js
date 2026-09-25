@@ -31,7 +31,7 @@ function populateServiceSelect() {
   select.innerHTML = '<option value="">-- Choose a Beauty Treatment --</option>' + 
     services.map(s => `
       <option value="${s.id}" ${s.id === preselectedId ? 'selected' : ''}>
-        ${s.name} (${s.duration}) - $${s.price.toFixed(2)}
+        ${s.name} (${s.duration}) - ${window.formatCurrency(s.price)}
       </option>
     `).join('');
 
@@ -105,7 +105,7 @@ function updateBookingSummary() {
   if (selectedService) {
     if (nameElem) nameElem.textContent = selectedService.name;
     if (durElem) durElem.textContent = selectedService.duration;
-    if (priceElem) priceElem.textContent = `$${selectedService.price.toFixed(2)}`;
+    if (priceElem) priceElem.textContent = window.formatCurrency(selectedService.price);
   }
 
   if (dateElem) {

@@ -174,7 +174,7 @@ function renderFilteredProducts() {
           </div>
 
           <div class="product-footer-row">
-            <span class="product-price">$${p.price.toFixed(2)}</span>
+            <span class="product-price">${window.formatCurrency(p.price)}</span>
             <div class="product-card-actions">
               <button class="btn btn-outline-primary btn-sm" onclick="openProductModal('${p.id}')">View Details</button>
               <button class="btn btn-primary btn-sm" onclick="addProductToCart('${p.id}')">Add to Cart</button>
@@ -249,7 +249,7 @@ window.openProductModal = function(productId) {
         <span class="product-rating">★ ${product.rating} / 5.0</span>
       </div>
       <h2 style="font-size:1.4rem; margin-bottom:0.8rem;">${product.name}</h2>
-      <div style="font-size:1.5rem; font-weight:800; color:var(--primary); margin-bottom:1.2rem;">$${product.price.toFixed(2)}</div>
+      <div style="font-size:1.5rem; font-weight:800; color:var(--primary); margin-bottom:1.2rem;">${window.formatCurrency(product.price)}</div>
       
       <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.6; margin-bottom:1.2rem;">${product.shortDesc}</p>
       
@@ -269,7 +269,7 @@ window.openProductModal = function(productId) {
       </div>
 
       <div style="display:flex; gap:0.8rem;">
-        <button class="btn btn-primary" onclick="addProductToCart('${product.id}'); closeProductModal();" style="flex:1;">Add to Cart - $${product.price.toFixed(2)}</button>
+        <button class="btn btn-primary" onclick="addProductToCart('${product.id}'); closeProductModal();" style="flex:1;">Add to Cart - ${window.formatCurrency(product.price)}</button>
         <button class="btn btn-secondary btn-icon" onclick="toggleProductFavorite('${product.id}', this)">♥</button>
       </div>
     </div>

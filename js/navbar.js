@@ -213,7 +213,7 @@ function renderDrawers() {
         <div class="drawer-footer">
           <div style="display:flex; justify-content:space-between; margin-bottom:1rem; font-weight:700;">
             <span>Estimated Total:</span>
-            <span id="cart-total-price" style="color:var(--primary); font-size:1.2rem;">$0.00</span>
+            <span id="cart-total-price" style="color:var(--primary); font-size:1.2rem;">₹0</span>
           </div>
           <button id="cart-checkout-btn" class="btn btn-primary" style="width:100%;">Proceed to Checkout</button>
         </div>
@@ -268,7 +268,7 @@ function renderCartItems() {
         <a href="products.html" class="btn btn-outline-primary btn-sm" style="margin-top:1.2rem;">Browse Products</a>
       </div>
     `;
-    if (totalPriceElem) totalPriceElem.textContent = '$0.00';
+    if (totalPriceElem) totalPriceElem.textContent = window.formatCurrency(0);
     return;
   }
 
@@ -286,7 +286,7 @@ function renderCartItems() {
         <img src="${product.image}" alt="${product.name}" class="cart-item-thumb">
         <div class="cart-item-info">
           <h4 class="cart-item-title">${product.name}</h4>
-          <div class="cart-item-price">$${product.price.toFixed(2)}</div>
+          <div class="cart-item-price">${window.formatCurrency(product.price)}</div>
           <div class="cart-qty-ctrl">
             <button class="cart-qty-btn" onclick="modifyCartQty('${product.id}', -1)">-</button>
             <span style="font-size:0.85rem; font-weight:700; padding:0 0.4rem;">${item.quantity}</span>
@@ -299,7 +299,7 @@ function renderCartItems() {
   });
 
   container.innerHTML = itemsHtml;
-  if (totalPriceElem) totalPriceElem.textContent = `$${total.toFixed(2)}`;
+  if (totalPriceElem) totalPriceElem.textContent = window.formatCurrency(total);
 }
 
 function renderFavoritesItems() {
@@ -329,7 +329,7 @@ function renderFavoritesItems() {
         <img src="${product.image}" alt="${product.name}" class="cart-item-thumb">
         <div class="cart-item-info">
           <h4 class="cart-item-title">${product.name}</h4>
-          <div class="cart-item-price">$${product.price.toFixed(2)}</div>
+          <div class="cart-item-price">${window.formatCurrency(product.price)}</div>
           <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
             <button class="btn btn-primary btn-sm" onclick="moveFavToCart('${product.id}')" style="padding:0.3rem 0.7rem; font-size:0.75rem;">Add to Cart</button>
             <button onclick="removeFavorite('${product.id}')" style="color:var(--text-muted); font-size:0.8rem;">Remove</button>

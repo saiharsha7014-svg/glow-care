@@ -56,7 +56,7 @@ function renderKPIs() {
   document.getElementById('kpi-today-appts').textContent = todayAppts.length;
   document.getElementById('kpi-products').textContent = products.length;
   document.getElementById('kpi-services').textContent = services.length;
-  document.getElementById('kpi-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
+  document.getElementById('kpi-revenue').textContent = window.formatCurrency(totalRevenue);
 }
 
 // 1. Appointments Table
@@ -84,7 +84,7 @@ function renderAppointmentsTable() {
       </td>
       <td>${a.serviceName}</td>
       <td>${a.date} <span style="color:var(--text-muted); font-size:0.82rem;">(${a.time})</span></td>
-      <td>$${Number(a.price).toFixed(2)}</td>
+      <td>${window.formatCurrency(a.price)}</td>
       <td>
         <select class="status-select" onchange="changeAppointmentStatus('${a.id}', this.value)">
           <option value="Pending" ${a.status === 'Pending' ? 'selected' : ''}>Pending</option>
@@ -138,7 +138,7 @@ function renderProductsTable() {
         <div style="font-size:0.8rem; color:var(--text-muted);">${p.shortDesc.slice(0, 50)}...</div>
       </td>
       <td><span class="section-tag" style="margin:0; font-size:0.75rem;">${p.category}</span></td>
-      <td><strong>$${p.price.toFixed(2)}</strong></td>
+      <td><strong>${window.formatCurrency(p.price)}</strong></td>
       <td>★ ${p.rating}</td>
       <td>
         <button class="btn-action-icon btn-action-delete" onclick="adminDeleteProduct('${p.id}')" title="Delete Product">🗑</button>
@@ -174,7 +174,7 @@ function renderServicesTable() {
       </td>
       <td>${s.category}</td>
       <td>⏱ ${s.duration}</td>
-      <td><strong>$${s.price.toFixed(2)}</strong></td>
+      <td><strong>${window.formatCurrency(s.price)}</strong></td>
     </tr>
   `).join('');
 }
