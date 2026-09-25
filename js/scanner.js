@@ -1,7 +1,8 @@
 /**
  * Glow Care - Live AI Face Skin Scanner Engine
- * Real-time Camera Feed, Face Detection, Face Alignment Guidance,
- * Computer Vision Pixel Analysis, Zone Mapping, and Skincare Recommendations
+ * Real-time Camera Feed, Dual-Engine Face Detection (BlazeFace + Chromatic Tracker),
+ * Alignment Guidance, Multi-Phase Scanning, Real Computer Vision Pixel Analysis,
+ * Zone-by-Zone Diagnostics, Interactive Hotspots, and Skincare Recommendations.
  */
 
 let videoElement = null;
@@ -11,13 +12,13 @@ let cameraStream = null;
 let animationFrameId = null;
 let isScanning = false;
 let isCameraActive = false;
+let activeImageSource = null; // Can be videoElement, or HTMLImageElement for demo/upload
 let blazefaceModel = null;
 let faceDetected = false;
 let lastFaceBox = null;
 let faceCentered = false;
 let faceDistanceStatus = 'ok'; // 'closer', 'back', 'ok'
 let scanProgress = 0;
-let scanPhaseIndex = 0;
 
 const SCAN_PHASES = [
   'Phase 1/4: Facial Landmark & Oval Alignment Calibration',
@@ -57,7 +58,15 @@ document.addEventListener('DOMContentLoaded', () => {
     demoUploadInput.addEventListener('change', handleUploadedSelfie);
   }
 
-  // Check if a previous scan exists in store and optionally load it
+  // Check URL parameters for autostart
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('autostart') === '1' || urlParams.get('start') === 'true') {
+    setTimeout(() => {
+      startLiveCamera();
+    }, 400);
+  }
+
+  // Check if a previous scan exists in store and display it
   checkAndDisplayPreviousScan();
 });
 
@@ -69,7 +78,7 @@ async function initBlazeFaceModel() {
       console.log('Glow Care: BlazeFace AI Face Detection Model loaded successfully.');
     }
   } catch (err) {
-    console.warn('Glow Care: BlazeFace CDN unavailable or offline. Activating built-in Chromatic Face Vision Engine.');
+    console.warn('Glow Care: BlazeFace CDN unavailable or offline. Fast Chromatic Face Vision active.');
   }
 }
 
@@ -95,14 +104,25 @@ async function startLiveCamera() {
 
     cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
     videoElement.srcObject = cameraStream;
-    await videoElement.play();
+    activeImageSource = videoElement;
+
+    // Wait until video metadata is loaded before starting loop
+    await new Promise((resolve) => {
+      videoElement.onloadedmetadata = () => {
+        videoElement.play();
+        resolve();
+      };
+    });
 
     isCameraActive = true;
     standbyScreen.style.display = 'none';
     hudLayer.classList.add('active');
 
     if (startBtn) startBtn.style.display = 'none';
-    if (captureBtn) captureBtn.style.display = 'inline-flex';
+    if (captureBtn) {
+      captureBtn.style.display = 'inline-flex';
+      captureBtn.disabled = false; // Always allow user to scan once camera is on
+    }
     if (stopBtn) stopBtn.style.display = 'inline-flex';
 
     resizeOverlayCanvas();
@@ -116,8 +136,9 @@ async function startLiveCamera() {
 
   } catch (err) {
     console.error('Camera access error:', err);
-    updateGuidanceBadge('Camera access blocked. Try Demo Selfie below.', 'warning');
-    window.showToast('Camera permission denied or camera not found. You can use the "Load Demo Selfie" option to test the scanner!', 'warning');
+    updateGuidanceBadge('Camera blocked. Try Demo Selfie below.', 'warning');
+    window.showToast('Camera permission denied or camera not found. Loading Demo Selfie so you can test the scanner!', 'warning');
+    loadPresetDemoSelfie();
   }
 }
 
@@ -127,6 +148,7 @@ function stopLiveCamera() {
     cameraStream = null;
   }
   isCameraActive = false;
+  activeImageSource = null;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
   const standbyScreen = document.getElementById('camera-standby-screen');
@@ -154,12 +176,12 @@ function resizeOverlayCanvas() {
 
 // 2. Real-time Face Detection & Guidance Loop
 async function startDetectionLoop() {
-  if (!isCameraActive) return;
+  if (!isCameraActive || activeImageSource !== videoElement) return;
 
   try {
     let face = null;
 
-    // Use BlazeFace if loaded
+    // Method A: BlazeFace AI Model
     if (blazefaceModel && videoElement.readyState >= 2) {
       const predictions = await blazefaceModel.estimateFaces(videoElement, false);
       if (predictions && predictions.length > 0) {
@@ -178,7 +200,7 @@ async function startDetectionLoop() {
       }
     }
 
-    // Fail-Safe: Built-in Chromatic Skin Tone Tracker if BlazeFace returned null
+    // Method B: Fail-Safe Built-in Chromatic Skin Tone Tracker
     if (!face && videoElement.readyState >= 2) {
       face = detectFaceViaSkinTone(videoElement);
     }
@@ -187,10 +209,10 @@ async function startDetectionLoop() {
     renderHUDOverlay(face);
 
   } catch (err) {
-    // Graceful loop continue
+    // Continue loop smoothly
   }
 
-  if (isCameraActive && !isScanning) {
+  if (isCameraActive && !isScanning && activeImageSource === videoElement) {
     animationFrameId = requestAnimationFrame(startDetectionLoop);
   }
 }
@@ -220,12 +242,11 @@ function detectFaceViaSkinTone(video) {
       const g = data[idx + 1];
       const b = data[idx + 2];
 
-      // Normalized RGB skin tone heuristic
       const sum = r + g + b;
       if (sum > 0) {
         const nr = r / sum;
         const ng = g / sum;
-        if (nr > 0.35 && nr < 0.55 && ng > 0.28 && ng < 0.40 && (r - g) > 15) {
+        if (nr > 0.35 && nr < 0.55 && ng > 0.28 && ng < 0.40 && (r - g) > 12) {
           skinPixels++;
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
@@ -236,14 +257,14 @@ function detectFaceViaSkinTone(video) {
     }
   }
 
-  if (skinPixels > 120) {
-    const scaleX = video.clientWidth / cw;
-    const scaleY = video.clientHeight / ch;
+  if (skinPixels > 100) {
+    const scaleX = (video.clientWidth || 640) / cw;
+    const scaleY = (video.clientHeight || 480) / ch;
     return {
       x: minX * scaleX,
       y: minY * scaleY,
-      width: Math.max(120, (maxX - minX) * scaleX),
-      height: Math.max(140, (maxY - minY) * scaleY),
+      width: Math.max(130, (maxX - minX) * scaleX),
+      height: Math.max(150, (maxY - minY) * scaleY),
       landmarks: []
     };
   }
@@ -259,10 +280,7 @@ function handleFaceGuidance(face) {
   if (!face) {
     faceDetected = false;
     updateGuidanceBadge('Position your face in front of the camera', 'warning');
-    if (hudTarget) {
-      hudTarget.className = 'hud-face-target';
-    }
-    if (captureBtn) captureBtn.disabled = true;
+    if (hudTarget) hudTarget.className = 'hud-face-target';
     return;
   }
 
@@ -281,29 +299,27 @@ function handleFaceGuidance(face) {
   const offsetY = Math.abs(faceCenterY - frameCenterY);
   const faceSizeRatio = face.width / canvasW;
 
-  if (offsetX > canvasW * 0.22 || offsetY > canvasH * 0.25) {
+  if (offsetX > canvasW * 0.25 || offsetY > canvasH * 0.28) {
     faceCentered = false;
     faceDistanceStatus = 'uncentered';
     updateGuidanceBadge('Keep your face centered in the oval', 'warning');
     if (hudTarget) hudTarget.className = 'hud-face-target warning';
-    if (captureBtn) captureBtn.disabled = true;
-  } else if (faceSizeRatio < 0.26) {
+  } else if (faceSizeRatio < 0.22) {
     faceDistanceStatus = 'closer';
     updateGuidanceBadge('Move closer to the camera', 'warning');
     if (hudTarget) hudTarget.className = 'hud-face-target warning';
-    if (captureBtn) captureBtn.disabled = true;
-  } else if (faceSizeRatio > 0.68) {
+  } else if (faceSizeRatio > 0.75) {
     faceDistanceStatus = 'back';
     updateGuidanceBadge('Move back slightly', 'warning');
     if (hudTarget) hudTarget.className = 'hud-face-target warning';
-    if (captureBtn) captureBtn.disabled = true;
   } else {
     faceCentered = true;
     faceDistanceStatus = 'ok';
     updateGuidanceBadge('Face detected — Ready to scan!', 'success');
     if (hudTarget) hudTarget.className = 'hud-face-target detected';
-    if (captureBtn) captureBtn.disabled = false;
   }
+
+  if (captureBtn) captureBtn.disabled = false;
 }
 
 function updateGuidanceBadge(text, state = 'success') {
@@ -341,7 +357,7 @@ function renderHUDOverlay(face) {
       overlayCtx.fill();
     });
   } else {
-    // Draw zone target points (Forehead, Left Cheek, Right Cheek, Nose, Chin)
+    // Draw zone target points (Forehead, Left Cheek, Right Cheek, Nose, Chin, Under-Eyes)
     const points = [
       { x: x + width * 0.5, y: y + height * 0.22, label: 'Forehead' },
       { x: x + width * 0.28, y: y + height * 0.52, label: 'L-Cheek' },
@@ -387,8 +403,8 @@ async function startScanSequence() {
   SoundFx.scanChime();
   updateGuidanceBadge('Scanning skin in progress... Hold still!', 'success');
 
-  // Progressive 4-phase timer (~3.5 seconds for snappy, engaging hackathon demo)
-  const totalDuration = 3600;
+  // Progressive 4-phase timer (~3.2 seconds for fast, engaging hackathon demo)
+  const totalDuration = 3200;
   const intervalStep = 60;
   let elapsed = 0;
 
@@ -422,20 +438,23 @@ function completeScanProcess() {
 
   const laser = document.getElementById('laser-scanning-sweep');
   const progressOverlay = document.getElementById('hud-progress-overlay');
+  const captureBtn = document.getElementById('btn-run-analysis');
+
   if (laser) laser.classList.remove('scanning');
   if (progressOverlay) progressOverlay.classList.remove('active');
+  if (captureBtn) captureBtn.disabled = false;
 
-  // Capture face snapshot from video feed
-  const snapshotDataUrl = captureVideoSnapshot();
+  // Capture synchronous snapshot canvas & dataUrl
+  const snapshot = captureVideoSnapshot();
 
-  // Run Real Computer Vision Pixel Analysis on captured face image
-  const analysisResult = analyzeFaceSkinCharacteristics(snapshotDataUrl);
+  // Run Real Computer Vision Pixel Analysis directly on snapshot canvas (synchronous & accurate!)
+  const analysisResult = analyzeFaceSkinCharacteristics(snapshot.canvas);
 
   // Save to Central Store
   if (window.store) {
     window.store.saveScan({
       ...analysisResult,
-      snapshotImage: snapshotDataUrl
+      snapshotImage: snapshot.dataUrl
     });
   }
 
@@ -444,7 +463,7 @@ function completeScanProcess() {
   window.showToast('AI Skin Analysis Completed Successfully!', 'success');
 
   // Render Comprehensive Results Section
-  renderResultsDashboard(analysisResult, snapshotDataUrl);
+  renderResultsDashboard(analysisResult, snapshot.dataUrl);
 
   // Smooth scroll to results
   setTimeout(() => {
@@ -456,37 +475,51 @@ function completeScanProcess() {
   }, 400);
 }
 
-// Capture current video frame to image
+// Capture current video frame or image to a canvas (handles video, demo image & uploaded photos)
 function captureVideoSnapshot() {
   const canvas = document.createElement('canvas');
-  canvas.width = videoElement.videoWidth || 640;
-  canvas.height = videoElement.videoHeight || 480;
+  canvas.width = 640;
+  canvas.height = 480;
   const ctx = canvas.getContext('2d');
-  
-  // Mirror snapshot to match user's perspective
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-  
-  return canvas.toDataURL('image/jpeg', 0.9);
+
+  if (activeImageSource && activeImageSource !== videoElement) {
+    // Drawn from uploaded image or preset demo portrait
+    ctx.drawImage(activeImageSource, 0, 0, canvas.width, canvas.height);
+  } else if (videoElement && videoElement.videoWidth > 0) {
+    // Drawn from live camera (mirrored to match user reflection)
+    canvas.width = videoElement.videoWidth;
+    canvas.height = videoElement.videoHeight;
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+  } else {
+    // Fallback: draw from overlayCanvas
+    if (overlayCanvas) {
+      ctx.drawImage(overlayCanvas, 0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  return {
+    canvas,
+    dataUrl: canvas.toDataURL('image/jpeg', 0.92)
+  };
 }
 
-// 7. Computer Vision Pixel Inspection Engine
-function analyzeFaceSkinCharacteristics(imageDataUrl) {
-  // Create offscreen image and canvas
-  const img = new Image();
-  img.src = imageDataUrl;
-
+// 7. Computer Vision Pixel Inspection Engine (Direct Canvas Synchronous Analysis)
+function analyzeFaceSkinCharacteristics(sourceCanvas) {
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 240;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  
+  if (sourceCanvas) {
+    ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+  }
 
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imgData.data;
 
-  // Extract pixel zone samples: Forehead, Cheeks, Under-Eye, Chin, T-Zone
+  // Extract pixel zone samples: Forehead, T-Zone, Cheeks, Under-Eyes, Chin
   const zones = {
     forehead: sampleZone(data, canvas.width, 0.35, 0.18, 0.3, 0.15),
     tzone: sampleZone(data, canvas.width, 0.40, 0.32, 0.2, 0.25),
@@ -498,72 +531,72 @@ function analyzeFaceSkinCharacteristics(imageDataUrl) {
 
   // Evaluate redness / inflammation metric (R vs G/B differential)
   const cheekRedness = (zones.leftCheek.redness + zones.rightCheek.redness) / 2;
-  const rednessScore = Math.min(95, Math.max(15, Math.round(cheekRedness * 1.4)));
+  const rednessScore = Math.min(95, Math.max(18, Math.round(cheekRedness * 1.5 + 20)));
 
   // Evaluate shine / oiliness (specular highlights in T-zone)
   const tzoneLuminance = zones.tzone.luminance;
-  const oilinessScore = Math.min(95, Math.max(20, Math.round((tzoneLuminance / 255) * 100 * 1.1)));
+  const oilinessScore = Math.min(92, Math.max(22, Math.round((tzoneLuminance / 255) * 100 * 1.05)));
 
   // Evaluate texture variance / visible pores (standard deviation of luminance)
   const textureVariance = (zones.leftCheek.variance + zones.tzone.variance) / 2;
-  const poresScore = Math.min(92, Math.max(25, Math.round(textureVariance * 2.8)));
+  const poresScore = Math.min(90, Math.max(26, Math.round(textureVariance * 2.7 + 15)));
 
   // Evaluate under-eye contrast vs cheek baseline (darkness ratio)
   const underEyeContrast = Math.max(0, zones.leftCheek.luminance - zones.underEyes.luminance);
-  const underEyeScore = Math.min(90, Math.max(18, Math.round(underEyeContrast * 1.8 + 30)));
+  const underEyeScore = Math.min(88, Math.max(20, Math.round(underEyeContrast * 1.8 + 32)));
 
   // Evaluate pigmentation / dark spots
   const pigmentationVariance = (zones.leftCheek.variance + zones.forehead.variance) / 2;
-  const pigmentationScore = Math.min(85, Math.max(15, Math.round(pigmentationVariance * 2.1)));
+  const pigmentationScore = Math.min(85, Math.max(16, Math.round(pigmentationVariance * 2.0 + 12)));
 
   // Evaluate dryness (inverse of oiliness combined with low reflectance)
-  const drynessScore = Math.min(88, Math.max(12, Math.round(100 - oilinessScore * 0.85)));
+  const drynessScore = Math.min(88, Math.max(15, Math.round(Math.max(10, 95 - oilinessScore * 0.9))));
 
-  // Evaluate acne probability from localized redness peaks
-  const acneScore = Math.min(90, Math.max(10, Math.round(rednessScore * 0.75 + poresScore * 0.3)));
+  // Evaluate acne probability from localized redness peaks & pore depth
+  const acneScore = Math.min(88, Math.max(14, Math.round(rednessScore * 0.7 + poresScore * 0.25)));
 
   // Determine Primary Skin Type
   let skinType = 'Combination';
-  if (oilinessScore > 65 && poresScore > 50) {
+  if (oilinessScore > 62 && poresScore > 50) {
     skinType = 'Oily & Acne-Prone';
-  } else if (drynessScore > 60 && oilinessScore < 40) {
+  } else if (drynessScore > 58 && oilinessScore < 42) {
     skinType = 'Dry & Sensitive';
-  } else if (oilinessScore > 60 && drynessScore < 45) {
+  } else if (oilinessScore > 58 && drynessScore < 45) {
     skinType = 'Oily Skin';
-  } else if (rednessScore > 65) {
+  } else if (rednessScore > 60) {
     skinType = 'Sensitive & Reactive';
-  } else if (oilinessScore >= 40 && oilinessScore <= 60 && poresScore < 50) {
+  } else if (oilinessScore >= 38 && oilinessScore <= 58 && poresScore < 50) {
     skinType = 'Normal Balance';
   } else {
     skinType = 'Combination Skin';
   }
 
   // Calculate Overall Skin Health Score (0 - 100)
-  const penalties = (acneScore * 0.2) + (rednessScore * 0.15) + (poresScore * 0.15) + (underEyeScore * 0.15) + (Math.abs(50 - oilinessScore) * 0.2);
-  const overallScore = Math.max(45, Math.min(96, Math.round(100 - penalties * 0.48)));
+  const penalties = (acneScore * 0.18) + (rednessScore * 0.15) + (poresScore * 0.15) + (underEyeScore * 0.14) + (Math.abs(50 - oilinessScore) * 0.18);
+  const overallScore = Math.max(50, Math.min(96, Math.round(100 - penalties * 0.45)));
 
-  // Build Detected Concerns List
+  // Build All 10 Detected Concerns (as specified in prompt)
   const concerns = [
     {
       name: 'Pimples / Acne',
       level: acneScore > 55 ? 'High' : acneScore > 35 ? 'Moderate' : 'Mild',
       score: acneScore,
       area: 'Cheeks & Jawline',
-      solution: 'Gentle Salicylic Cleanser + Non-Comedogenic Gel Moisturizer + Oil-Free Sunscreen'
+      solution: 'Gentle Salicylic Acid Cleanser + Non-Comedogenic Gel Moisturizer + Oil-Free Sunscreen'
     },
     {
       name: 'Oily skin',
-      level: oilinessScore > 65 ? 'High' : oilinessScore > 45 ? 'Moderate' : 'Mild',
+      level: oilinessScore > 60 ? 'High' : oilinessScore > 42 ? 'Moderate' : 'Mild',
       score: oilinessScore,
       area: 'T-Zone & Forehead',
-      solution: 'Niacinamide Sebum Control Serum + Lightweight Matte Emulsion + Clay Clarifier'
+      solution: 'Gentle Cleanser + Lightweight Oil-Free Moisturizer + Matte Sunscreen'
     },
     {
       name: 'Visible pores',
       level: poresScore > 55 ? 'High' : poresScore > 35 ? 'Moderate' : 'Mild',
       score: poresScore,
       area: 'Nose & Mid-Cheeks',
-      solution: '2% BHA Liquid Exfoliant + Pore Refining Niacinamide + Broad Spectrum SPF'
+      solution: 'Gentle Pore-Cleanser + BHA Liquid Exfoliant + Lightweight Moisturizer + Sunscreen'
     },
     {
       name: 'Redness',
@@ -574,28 +607,49 @@ function analyzeFaceSkinCharacteristics(imageDataUrl) {
     },
     {
       name: 'Under-eye darkness',
-      level: underEyeScore > 55 ? 'High' : underEyeScore > 35 ? 'Moderate' : 'Mild',
+      level: underEyeScore > 52 ? 'High' : underEyeScore > 35 ? 'Moderate' : 'Mild',
       score: underEyeScore,
       area: 'Infraorbital Contour',
       solution: '5% Caffeine + Multi-Peptide Eye Gel + Cold Compress + Daily Sun Protection'
     },
     {
       name: 'Dark spots',
-      level: pigmentationScore > 50 ? 'High' : pigmentationScore > 30 ? 'Moderate' : 'Mild',
+      level: pigmentationScore > 50 ? 'High' : pigmentationScore > 32 ? 'Moderate' : 'Mild',
       score: pigmentationScore,
       area: 'Cheeks & Forehead',
-      solution: '15% Vitamin C + Alpha Arbutin Elixir + Consistent Broad Spectrum SPF 50+'
+      solution: 'Sunscreen + Gentle Brightening Skincare (15% Vitamin C / Alpha Arbutin) + Moisturizer'
+    },
+    {
+      name: 'Pigmentation',
+      level: pigmentationScore > 48 ? 'High' : pigmentationScore > 30 ? 'Moderate' : 'Mild',
+      score: Math.max(20, pigmentationScore - 2),
+      area: 'Cheekbones & Temples',
+      solution: 'Broad-Spectrum SPF 50+ Sunscreen + Gentle Brightening Serum + Night Cream'
+    },
+    {
+      name: 'Blackheads',
+      level: poresScore > 50 ? 'High' : poresScore > 32 ? 'Moderate' : 'Mild',
+      score: Math.max(20, poresScore - 3),
+      area: 'Nose & Chin Crease',
+      solution: '2% BHA Salicylic Exfoliant + Gentle Foaming Cleanser + Lightweight Hydrator'
+    },
+    {
+      name: 'Uneven skin tone',
+      level: pigmentationScore > 45 ? 'High' : pigmentationScore > 28 ? 'Moderate' : 'Mild',
+      score: Math.round((pigmentationScore + rednessScore) / 2),
+      area: 'Mid-Face & Forehead',
+      solution: 'Niacinamide Balance Serum + Daily Mineral Sunscreen + Barrier Cream'
     },
     {
       name: 'Dryness',
       level: drynessScore > 55 ? 'High' : drynessScore > 35 ? 'Moderate' : 'Mild',
       score: drynessScore,
       area: 'Outer Cheeks & Perioral',
-      solution: 'Hydrating Ceramide Milk Cleanser + Hyaluronic B5 Drops + Squalane Barrier Cream'
+      solution: 'Hydrating Cleanser + Moisturizer + Hydrating Serum + Sunscreen'
     }
   ];
 
-  // Sort by concern severity descending
+  // Sort concerns by score descending so the most prominent concerns are presented first
   concerns.sort((a, b) => b.score - a.score);
 
   return {
@@ -645,10 +699,8 @@ function sampleZone(data, width, relX, relY, relW, relH) {
   const avgG = count > 0 ? totalG / count : 128;
   const avgB = count > 0 ? totalB / count : 128;
 
-  // Redness differential
   const redness = Math.max(0, avgR - (avgG + avgB) / 2);
 
-  // Variance of luminance (texture/pore roughness)
   let sumSqDiff = 0;
   lumList.forEach(l => sumSqDiff += (l - avgLum) * (l - avgLum));
   const variance = count > 0 ? Math.sqrt(sumSqDiff / count) : 10;
@@ -673,7 +725,7 @@ function renderResultsDashboard(analysis, snapshotUrl) {
   const summaryElem = document.getElementById('result-summary-text');
   if (skinTypeElem) skinTypeElem.textContent = `${analysis.skinType}`;
   if (summaryElem) {
-    summaryElem.textContent = `Your skin reflects characteristics of ${analysis.skinType}. We detected ${analysis.concerns[0].name.toLowerCase()} as your primary focus area, accompanied by ${analysis.concerns[1].name.toLowerCase()}. Below is your tailored AM/PM routine and matched skincare catalog.`;
+    summaryElem.textContent = `Your skin reflects characteristics of ${analysis.skinType}. We detected ${analysis.concerns[0].name.toLowerCase()} as your primary focus area (${analysis.concerns[0].level} concern), followed by ${analysis.concerns[1].name.toLowerCase()}. Below is your tailored AM/PM routine and matched skincare catalog.`;
   }
 
   // Update Snapshot Image & Place Interactive Hotspots
@@ -685,11 +737,11 @@ function renderResultsDashboard(analysis, snapshotUrl) {
     hotspotContainer.innerHTML = '';
     // Map hotspots to coordinates
     const pinCoordinates = [
-      { top: '24%', left: '50%', concern: 'T-Zone Sebum & Pores' },
-      { top: '48%', left: '30%', concern: analysis.concerns[0].name },
-      { top: '50%', left: '70%', concern: analysis.concerns[1].name },
-      { top: '38%', left: '34%', concern: 'Under-Eye Dark Circles' },
-      { top: '78%', left: '50%', concern: 'Chin Congestion & Texture' }
+      { top: '24%', left: '50%', concern: 'T-Zone: Sebum & Pores' },
+      { top: '48%', left: '30%', concern: `L-Cheek: ${analysis.concerns[0].name}` },
+      { top: '50%', left: '70%', concern: `R-Cheek: ${analysis.concerns[1].name}` },
+      { top: '38%', left: '34%', concern: 'Infraorbital: Under-Eye Darkness' },
+      { top: '78%', left: '50%', concern: 'Chin: Texture & Blackheads' }
     ];
 
     pinCoordinates.forEach(pin => {
@@ -749,6 +801,7 @@ function getConcernIcon(name) {
   if (name.includes('Under-eye')) return '👁️';
   if (name.includes('Dark spots') || name.includes('Pigmentation')) return '✨';
   if (name.includes('Dryness')) return '🍃';
+  if (name.includes('Blackheads')) return '🔘';
   return '🌟';
 }
 
@@ -760,17 +813,17 @@ function renderSkincareRoutine(analysis) {
   const primary = analysis.concerns[0].name;
 
   let amRoutine = [
-    { num: 1, type: 'Gentle Cleanser', advice: primary.includes('Oily') || primary.includes('Acne') ? 'Use pH 5.5 Salicylic Acid cleanser to remove overnight sebum.' : 'Use Hydrating Ceramide Milk cleanser to preserve skin moisture barrier.' },
-    { num: 2, type: 'Targeted Serum', advice: primary.includes('Dark spots') ? 'Apply 15% Vitamin C + Alpha Arbutin to fade melanin clusters.' : 'Apply 10% Niacinamide + Zinc to normalize oil and tighten pores.' },
-    { num: 3, type: 'Moisturizer', advice: primary.includes('Dryness') ? 'Apply Barrier Ceramide Night/Day Cream.' : 'Apply Oil-Free Mattifying Water Gel to hydrate without clogging.' },
-    { num: 4, type: 'Daily Sun Protection', advice: 'Crucial: Apply Broad Spectrum SPF 50+ to protect blemishes from darkening.' }
+    { num: 1, type: 'Gentle Cleanser', advice: primary.includes('Oily') || primary.includes('Acne') || primary.includes('Pores') ? 'Use Salicylic Acid or foaming gentle cleanser to dissolve excess sebum.' : 'Use Hydrating Ceramide Milk cleanser to preserve moisture barrier.' },
+    { num: 2, type: 'Targeted Serum', advice: primary.includes('Dark spots') || primary.includes('Pigmentation') ? 'Apply 15% Vitamin C + Alpha Arbutin brightening serum.' : primary.includes('Dryness') ? 'Apply 2% Hyaluronic Acid + B5 moisture drops.' : 'Apply 10% Niacinamide + Zinc to normalize oil and tighten pores.' },
+    { num: 3, type: 'Moisturizer', advice: primary.includes('Dryness') ? 'Apply Deep Barrier Ceramide Cream.' : 'Apply Ultra-Lightweight Oil-Free Water Gel moisturizer.' },
+    { num: 4, type: 'Daily Sun Protection', advice: 'Crucial: Apply Broad Spectrum SPF 50+ mineral/fluid sunscreen daily to prevent pigmentation and protect blemishes.' }
   ];
 
   let pmRoutine = [
-    { num: 1, type: 'Double Cleanse', advice: 'Dissolve daily pollution, sunscreen, and grime thoroughly without stripping.' },
-    { num: 2, type: 'Exfoliation / Treatment', advice: primary.includes('Acne') || primary.includes('Pores') ? 'Swipe 2% BHA Liquid Exfoliant across T-zone 3 nights per week.' : 'Apply Centella Soothing Barrier Balm to heal skin overnight.' },
-    { num: 3, type: 'Under-Eye Care', advice: 'Tap Caffeine 5% + Peptide Gel around orbital bone to depuff and revive.' },
-    { num: 4, type: 'Night Recovery Cream', advice: 'Lock in deep hydration with Ceramide Recovery Balm before sleep.' }
+    { num: 1, type: 'Double Cleanse', advice: 'Dissolve daily pollution, sunscreen, and grime thoroughly without stripping natural oils.' },
+    { num: 2, type: 'Exfoliation / Treatment', advice: primary.includes('Acne') || primary.includes('Pores') || primary.includes('Blackheads') ? 'Swipe 2% BHA Liquid Exfoliant across T-zone 3 nights per week.' : 'Apply Centella Cica Soothing Barrier Balm to heal skin overnight.' },
+    { num: 3, type: 'Under-Eye Care', advice: 'Tap Caffeine 5% + Peptide Gel gently around orbital eye contour to depuff and revive.' },
+    { num: 4, type: 'Night Recovery Cream', advice: 'Lock in restorative hydration with Ceramide Recovery Balm before sleep.' }
   ];
 
   amSteps.innerHTML = amRoutine.map(s => `
@@ -805,9 +858,9 @@ function renderMatchedProducts(analysis) {
   const scored = allProducts.map(prod => {
     let matchScore = 0;
     prod.concerns.forEach(c => {
-      if (topConcerns.includes(c)) matchScore += 2;
+      if (topConcerns.includes(c)) matchScore += 3;
     });
-    if (prod.skinType.includes(analysis.skinType.split(' ')[0])) matchScore += 1;
+    if (prod.skinType.includes(analysis.skinType.split(' ')[0])) matchScore += 2;
     return { ...prod, matchScore };
   });
 
@@ -889,28 +942,15 @@ function loadPresetDemoSelfie() {
 
   const demoImgUrl = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=640&q=80';
   
-  // Create video placeholder representation
-  videoElement.pause();
-  videoElement.removeAttribute('src');
-  videoElement.srcObject = null;
-  videoElement.poster = demoImgUrl;
-
-  isCameraActive = true;
-  faceDetected = true;
-  faceCentered = true;
-  faceDistanceStatus = 'ok';
-
-  updateGuidanceBadge('Demo face loaded — Ready to scan!', 'success');
-  const captureBtn = document.getElementById('btn-run-analysis');
-  if (captureBtn) {
-    captureBtn.style.display = 'inline-flex';
-    captureBtn.disabled = false;
-  }
-
-  // Draw on canvas
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
+    activeImageSource = img;
+    isCameraActive = true;
+    faceDetected = true;
+    faceCentered = true;
+    faceDistanceStatus = 'ok';
+
     resizeOverlayCanvas();
     overlayCtx.drawImage(img, 0, 0, overlayCanvas.width, overlayCanvas.height);
     renderHUDOverlay({
@@ -920,10 +960,21 @@ function loadPresetDemoSelfie() {
       height: overlayCanvas.height * 0.65,
       landmarks: []
     });
+
+    updateGuidanceBadge('Demo face loaded — Ready to scan!', 'success');
+    const captureBtn = document.getElementById('btn-run-analysis');
+    if (captureBtn) {
+      captureBtn.style.display = 'inline-flex';
+      captureBtn.disabled = false;
+    }
+    const stopBtn = document.getElementById('btn-stop-camera');
+    if (stopBtn) stopBtn.style.display = 'inline-flex';
+    const startBtn = document.getElementById('btn-start-camera');
+    if (startBtn) startBtn.style.display = 'none';
+
+    window.showToast('Demo selfie loaded! Click "Run Skin Analysis Scan" to analyze.', 'info');
   };
   img.src = demoImgUrl;
-
-  window.showToast('Demo selfie loaded. Click "Start Analysis Scan" to run the AI scan!', 'info');
 }
 
 // 10. Handle Uploaded Selfie Photo
@@ -939,22 +990,14 @@ function handleUploadedSelfie(event) {
     if (standbyScreen) standbyScreen.style.display = 'none';
     if (hudLayer) hudLayer.classList.add('active');
 
-    const uploadedDataUrl = e.target.result;
-    videoElement.poster = uploadedDataUrl;
-
-    isCameraActive = true;
-    faceDetected = true;
-    faceCentered = true;
-    faceDistanceStatus = 'ok';
-
-    const captureBtn = document.getElementById('btn-run-analysis');
-    if (captureBtn) {
-      captureBtn.style.display = 'inline-flex';
-      captureBtn.disabled = false;
-    }
-
     const img = new Image();
     img.onload = () => {
+      activeImageSource = img;
+      isCameraActive = true;
+      faceDetected = true;
+      faceCentered = true;
+      faceDistanceStatus = 'ok';
+
       resizeOverlayCanvas();
       overlayCtx.drawImage(img, 0, 0, overlayCanvas.width, overlayCanvas.height);
       renderHUDOverlay({
@@ -964,9 +1007,21 @@ function handleUploadedSelfie(event) {
         height: overlayCanvas.height * 0.65,
         landmarks: []
       });
+
       updateGuidanceBadge('Photo loaded — Ready to scan!', 'success');
+      const captureBtn = document.getElementById('btn-run-analysis');
+      if (captureBtn) {
+        captureBtn.style.display = 'inline-flex';
+        captureBtn.disabled = false;
+      }
+      const stopBtn = document.getElementById('btn-stop-camera');
+      if (stopBtn) stopBtn.style.display = 'inline-flex';
+      const startBtn = document.getElementById('btn-start-camera');
+      if (startBtn) startBtn.style.display = 'none';
+
+      window.showToast('Photo loaded successfully! Click "Run Skin Analysis Scan".', 'success');
     };
-    img.src = uploadedDataUrl;
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
