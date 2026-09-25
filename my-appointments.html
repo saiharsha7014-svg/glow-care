@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Appointments | Glow Care</title>
+  <meta name="description" content="Manage your upcoming beauty and skin care bookings, check appointment status, or cancel bookings online.">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header class="site-header">
+    <div class="container nav-container">
+      <a href="index.html" class="brand-logo">
+        <div class="brand-sparkle">✨</div>
+        <div class="brand-name">Glow<span>Care</span></div>
+      </a>
+
+      <nav class="nav-menu">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="scanner.html" class="nav-link">
+          AI Face Scanner <span class="nav-badge-pill">Live AI</span>
+        </a>
+        <a href="products.html" class="nav-link">Products</a>
+        <a href="services.html" class="nav-link">Services</a>
+        <a href="book.html" class="nav-link">Book Appointment</a>
+        <a href="my-appointments.html" class="nav-link active">My Bookings</a>
+        <a href="about.html" class="nav-link">About</a>
+        <a href="contact.html" class="nav-link">Contact</a>
+        <a href="admin.html" class="nav-link" id="nav-admin-link" style="color:var(--secondary); font-weight:700;">Admin</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button id="theme-toggle-btn" class="btn-icon" title="Toggle Light/Dark Theme">🌙</button>
+
+        <button id="favorites-toggle-btn" class="btn-icon" title="Saved Favorites">
+          ❤️
+          <span id="nav-fav-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <button id="cart-toggle-btn" class="btn-icon" title="Shopping Cart">
+          🛍️
+          <span id="nav-cart-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <div class="user-menu-wrapper">
+          <button id="user-avatar-btn" class="user-avatar-btn">
+            <div id="nav-user-initials" class="avatar-circle">SJ</div>
+            <span id="nav-user-name">Sarah</span>
+            <span style="font-size:0.75rem;">▼</span>
+          </button>
+          
+          <div id="user-dropdown-panel" class="dropdown-panel">
+            <div class="dropdown-header">
+              <div class="name">Sarah Jenkins</div>
+              <div class="email">demo@glowcare.com</div>
+            </div>
+            <a href="my-appointments.html" class="dropdown-item">📅 My Appointments</a>
+            <a href="scanner.html" class="dropdown-item">🔬 My Skin Scan</a>
+            <a href="auth.html" class="dropdown-item">👤 Account Profile</a>
+            <a href="admin.html" class="dropdown-item">⚙️ Admin Dashboard</a>
+            <div class="dropdown-divider"></div>
+            <button onclick="handleLogout()" class="dropdown-item" style="color:var(--status-danger);">🚪 Logout</button>
+          </div>
+        </div>
+
+        <button class="mobile-nav-toggle btn-icon" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- My Appointments Main Section -->
+  <main style="padding: 3rem 0 5rem;">
+    <div class="container">
+
+      <!-- Header Row -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <span class="section-tag">Booking Management</span>
+          <h1 class="section-title" style="margin-bottom:0.4rem;">My Scheduled Bookings</h1>
+          <p style="color:var(--text-secondary);">Manage, review details, or cancel your upcoming beauty sessions.</p>
+        </div>
+        <a href="book.html" class="btn btn-primary">+ Book New Appointment</a>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="admin-tabs-nav" style="margin-bottom: 2rem;">
+        <button class="admin-tab-btn app-filter-tab active" data-status="all">All Bookings</button>
+        <button class="admin-tab-btn app-filter-tab" data-status="confirmed">Confirmed</button>
+        <button class="admin-tab-btn app-filter-tab" data-status="pending">Pending</button>
+        <button class="admin-tab-btn app-filter-tab" data-status="completed">Completed</button>
+        <button class="admin-tab-btn app-filter-tab" data-status="cancelled">Cancelled</button>
+      </div>
+
+      <!-- Appointments List Container -->
+      <div id="user-appointments-container">
+        <!-- Rendered dynamically by js/my-appointments.js -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <a href="index.html" class="brand-logo" style="margin-bottom:0.8rem;">
+            <div class="brand-sparkle">✨</div>
+            <div class="brand-name">Glow<span>Care</span></div>
+          </a>
+          <p class="footer-brand-desc">
+            Smart Beauty & Skin Care platform integrating live browser computer vision with personalized skincare routines.
+          </p>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <ul class="footer-links-list">
+            <li><a href="index.html" class="footer-link">Home</a></li>
+            <li><a href="scanner.html" class="footer-link">Live AI Skin Scanner</a></li>
+            <li><a href="products.html" class="footer-link">Skincare Catalog</a></li>
+            <li><a href="services.html" class="footer-link">Beauty Services</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Account & Support</h4>
+          <ul class="footer-links-list">
+            <li><a href="my-appointments.html" class="footer-link">My Appointments</a></li>
+            <li><a href="auth.html" class="footer-link">User Login / Signup</a></li>
+            <li><a href="admin.html" class="footer-link">Admin Dashboard</a></li>
+            <li><a href="contact.html" class="footer-link">Contact Clinic</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Clinic Hours & Contact</h4>
+          <div class="footer-contact-info">
+            <p>📍 742 Evergreen Wellness Ave, Suite 300</p>
+            <p>📞 +1 (800) 555-GLOW (4569)</p>
+            <p>✉️ support@glowcare.com</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <div>© 2026 Glow Care Inc. All rights reserved. Built for College Project & Hackathon Showcase.</div>
+        <div>General skincare guidance only. Results are not a medical diagnosis.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/my-appointments.js"></script>
+</body>
+</html>

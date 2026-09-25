@@ -1,0 +1,803 @@
+/* ==========================================================================
+   Glow Care - Smart Face Skin Scanner Stylesheet
+   High-Tech Beauty Vision HUD, Real-time Camera Feed & Results Dashboard
+   ========================================================================== */
+
+.scanner-page-wrapper {
+  padding: 2.5rem 0 5rem;
+}
+
+/* Scanner Header Banner */
+.scanner-hero-header {
+  text-align: center;
+  max-width: 780px;
+  margin: 0 auto 2.5rem;
+}
+
+.scanner-hero-header h1 {
+  font-size: clamp(2.2rem, 3.8vw, 3.2rem);
+  margin-bottom: 0.8rem;
+}
+
+.scanner-hero-header p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+/* Scanner Layout Grid */
+.scanner-interface-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+/* Live Camera Feed Card */
+.camera-console-card {
+  background: #0E1217;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.camera-feed-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: #080A0D;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror camera for natural feel */
+  display: block;
+}
+
+#overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1); /* Align with mirrored video */
+}
+
+/* Pre-scan / Standby Placeholder Screen */
+.camera-standby-screen {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, #1E2530 0%, #0E1217 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.standby-graphic-pulse {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(217, 107, 98, 0.12);
+  border: 2px dashed rgba(217, 107, 98, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: var(--primary);
+  margin-bottom: 1.5rem;
+  position: relative;
+  animation: pulseRotate 12s linear infinite;
+}
+
+@keyframes pulseRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.standby-title {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.standby-desc {
+  color: #A4B2C1;
+  font-size: 0.95rem;
+  max-width: 440px;
+  margin-bottom: 1.8rem;
+  line-height: 1.5;
+}
+
+/* HUD Live Overlays */
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  display: none;
+}
+
+.hud-layer.active {
+  display: block;
+}
+
+/* Oval Face Placement Target */
+.hud-face-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 250px;
+  height: 330px;
+  transform: translate(-50%, -50%);
+  border: 2.5px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 50% 50% 46% 46%;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hud-face-target.detected {
+  border-color: #52B788;
+  border-style: solid;
+  box-shadow: 0 0 35px rgba(82, 183, 136, 0.35);
+}
+
+.hud-face-target.warning {
+  border-color: #F4A261;
+  box-shadow: 0 0 30px rgba(244, 162, 97, 0.35);
+}
+
+.hud-target-corner {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: #E27B73;
+  border-style: solid;
+}
+.ht-tl { top: -6px; left: 20%; border-width: 3px 0 0 3px; }
+.ht-tr { top: -6px; right: 20%; border-width: 3px 3px 0 0; }
+.ht-bl { bottom: -6px; left: 20%; border-width: 0 0 3px 3px; }
+.ht-br { bottom: -6px; right: 20%; border-width: 0 3px 3px 0; }
+
+/* Real-time Guidance Banner */
+.hud-guidance-badge {
+  position: absolute;
+  top: 1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 18, 23, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  padding: 0.55rem 1.4rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.hud-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #52B788;
+  box-shadow: 0 0 8px #52B788;
+}
+
+.hud-status-indicator.pulse {
+  animation: statusBlink 1.2s infinite;
+}
+
+@keyframes statusBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
+
+/* Scanning Sweep Laser */
+.laser-scanning-sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent 5%, #52B788 30%, #FFFFFF 50%, #52B788 70%, transparent 95%);
+  box-shadow: 0 0 20px #52B788, 0 0 40px #52B788;
+  display: none;
+  z-index: 7;
+}
+
+.laser-scanning-sweep.scanning {
+  display: block;
+  animation: scanLaser 2.2s ease-in-out infinite;
+}
+
+@keyframes scanLaser {
+  0% { top: 12%; opacity: 0.3; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 12%; opacity: 0.3; }
+}
+
+/* Progress HUD in Bottom of Camera Feed */
+.hud-progress-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(10, 14, 19, 0.95) 100%);
+  padding: 2rem 1.8rem 1.2rem;
+  z-index: 8;
+  display: none;
+}
+
+.hud-progress-overlay.active {
+  display: block;
+}
+
+.progress-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.scan-phase-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #A4B2C1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scan-phase-pct {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #52B788;
+}
+
+.scan-progress-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.scan-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #D96B62, #F4A261, #52B788);
+  border-radius: var(--radius-full);
+  transition: width 0.15s ease-out;
+}
+
+/* Camera Console Footer Controls */
+.camera-console-controls {
+  padding: 1.2rem 1.5rem;
+  background: #141A22;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.console-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-ctrl {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all var(--transition-fast);
+}
+
+.btn-ctrl:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Instructions & Feature Guide Sidebar */
+.scanner-guide-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.scanner-panel-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.6rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.scanner-panel-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.prep-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.prep-tip-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.prep-tip-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.detected-zones-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.zone-chip {
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.zone-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* ==========================================================================
+   RESULTS DASHBOARD SECTION
+   ========================================================================== */
+.scanner-results-section {
+  display: none;
+  margin-top: 3.5rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.scanner-results-section.show {
+  display: block;
+}
+
+.results-header-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 2.2rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.results-top-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+/* Overall Skin Score Circular Gauge */
+.score-circle-container {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.score-svg {
+  transform: rotate(-90deg);
+  width: 100%;
+  height: 100%;
+}
+
+.score-bg-ring {
+  fill: none;
+  stroke: var(--border-light);
+  stroke-width: 9;
+}
+
+.score-val-ring {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 377;
+  stroke-dashoffset: 80;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.score-number-inside {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.score-number-inside .val {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.score-number-inside .label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.results-summary-info h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.skin-type-badge-large {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.1rem;
+  border-radius: var(--radius-full);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.8rem;
+}
+
+.results-summary-text {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Face Snapshot with Detected Area Hotspots */
+.results-analysis-layout {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.face-map-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.face-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.snapshot-frame-box {
+  position: relative;
+  aspect-ratio: 4/4.5;
+  background: #0E1217;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+#snapshot-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Hotspot Interactive Markers */
+.face-hotspot {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(217, 107, 98, 0.35);
+  border: 2px solid #E27B73;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+  transition: all var(--transition-fast);
+  box-shadow: 0 0 14px rgba(226, 123, 115, 0.7);
+  animation: pulsePin 2s infinite;
+}
+
+.face-hotspot:hover {
+  transform: translate(-50%, -50%) scale(1.25);
+  background: #E27B73;
+}
+
+@keyframes pulsePin {
+  0%, 100% { box-shadow: 0 0 8px rgba(226, 123, 115, 0.6); }
+  50% { box-shadow: 0 0 20px rgba(226, 123, 115, 1); }
+}
+
+.hotspot-tooltip {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 18, 23, 0.95);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.face-hotspot:hover .hotspot-tooltip {
+  opacity: 1;
+}
+
+/* Detected Concerns List */
+.concerns-breakdown-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.concerns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.concern-item-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  align-items: center;
+  padding: 0.9rem 1.1rem;
+  background: var(--bg-main);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.concern-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.concern-icon {
+  font-size: 1.1rem;
+}
+
+.concern-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.concern-level-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  justify-self: start;
+}
+
+.level-mild {
+  background: rgba(82, 183, 136, 0.15);
+  color: #2A9D8F;
+}
+
+.level-moderate {
+  background: rgba(244, 162, 97, 0.15);
+  color: #E76F51;
+}
+
+.level-high {
+  background: rgba(230, 57, 70, 0.15);
+  color: #E63946;
+}
+
+.concern-metric-track {
+  height: 6px;
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.concern-metric-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+}
+
+/* Skincare Routine Blueprint (AM / PM) */
+.routine-blueprint-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: 2.2rem;
+  margin-bottom: 2.5rem;
+}
+
+.routine-tabs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.routine-column {
+  background: var(--bg-main);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.6rem;
+}
+
+.routine-col-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.routine-step-item {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.step-num-pill {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-content .type {
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: 0.15rem;
+}
+
+.step-content .advice {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Matched Recommendations Grid */
+.matched-products-section {
+  margin-bottom: 2.5rem;
+}
+
+.recommendations-banner {
+  background: linear-gradient(135deg, rgba(217, 107, 98, 0.12) 0%, rgba(82, 183, 136, 0.12) 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.6rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Scanner Responsive Adjustments */
+@media (max-width: 992px) {
+  .scanner-interface-grid {
+    grid-template-columns: 1fr;
+  }
+  .results-top-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  .score-circle-container {
+    margin: 0 auto;
+  }
+  .results-analysis-layout {
+    grid-template-columns: 1fr;
+  }
+  .routine-tabs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .concern-item-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .camera-console-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

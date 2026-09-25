@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Management Dashboard | Glow Care</title>
+  <meta name="description" content="Central administration console for Glow Care: manage appointments, inventory catalog, beauty services, and client profiles.">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header class="site-header">
+    <div class="container nav-container">
+      <a href="index.html" class="brand-logo">
+        <div class="brand-sparkle">✨</div>
+        <div class="brand-name">Glow<span>Care</span></div>
+      </a>
+
+      <nav class="nav-menu">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="scanner.html" class="nav-link">
+          AI Face Scanner <span class="nav-badge-pill">Live AI</span>
+        </a>
+        <a href="products.html" class="nav-link">Products</a>
+        <a href="services.html" class="nav-link">Services</a>
+        <a href="book.html" class="nav-link">Book Appointment</a>
+        <a href="my-appointments.html" class="nav-link">My Bookings</a>
+        <a href="about.html" class="nav-link">About</a>
+        <a href="contact.html" class="nav-link">Contact</a>
+        <a href="admin.html" class="nav-link active" id="nav-admin-link" style="color:var(--secondary); font-weight:700;">Admin</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button id="theme-toggle-btn" class="btn-icon" title="Toggle Light/Dark Theme">🌙</button>
+
+        <button id="favorites-toggle-btn" class="btn-icon" title="Saved Favorites">
+          ❤️
+          <span id="nav-fav-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <button id="cart-toggle-btn" class="btn-icon" title="Shopping Cart">
+          🛍️
+          <span id="nav-cart-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <div class="user-menu-wrapper">
+          <button id="user-avatar-btn" class="user-avatar-btn">
+            <div id="nav-user-initials" class="avatar-circle">EV</div>
+            <span id="nav-user-name">Dr. Elena</span>
+            <span style="font-size:0.75rem;">▼</span>
+          </button>
+          
+          <div id="user-dropdown-panel" class="dropdown-panel">
+            <div class="dropdown-header">
+              <div class="name">Dr. Elena Vance (Admin)</div>
+              <div class="email">admin@glowcare.com</div>
+            </div>
+            <a href="admin.html" class="dropdown-item">⚙️ Admin Dashboard</a>
+            <a href="my-appointments.html" class="dropdown-item">📅 View Bookings</a>
+            <a href="scanner.html" class="dropdown-item">🔬 Run AI Scanner</a>
+            <div class="dropdown-divider"></div>
+            <button onclick="handleLogout()" class="dropdown-item" style="color:var(--status-danger);">🚪 Logout</button>
+          </div>
+        </div>
+
+        <button class="mobile-nav-toggle btn-icon" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Dashboard Container -->
+  <main class="admin-wrapper">
+    <div class="container">
+
+      <!-- Header Row -->
+      <div class="admin-header-row">
+        <div class="admin-header-titles">
+          <span class="section-tag" style="background:rgba(43, 122, 120, 0.15); color:var(--secondary);">
+            Clinic Operations & AI Analytics
+          </span>
+          <h1>Admin Management Console</h1>
+          <p>Real-time monitor for appointments, catalog inventory, service pricing, and customer records.</p>
+        </div>
+
+        <div class="admin-quick-actions">
+          <button id="btn-export-csv" class="btn btn-secondary">
+            <span>📥</span> Export CSV
+          </button>
+          <button id="btn-admin-add-product" class="btn btn-primary">
+            <span>+</span> Add Product
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Metrics Grid -->
+      <div class="admin-metrics-grid">
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-rose">👥</div>
+          <div class="metric-details">
+            <div id="kpi-customers" class="num">2</div>
+            <div class="label">Total Customers</div>
+          </div>
+        </div>
+
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-teal">📅</div>
+          <div class="metric-details">
+            <div id="kpi-appointments" class="num">4</div>
+            <div class="label">Total Bookings</div>
+          </div>
+        </div>
+
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-amber">⏰</div>
+          <div class="metric-details">
+            <div id="kpi-today-appts" class="num">1</div>
+            <div class="label">Today's Bookings</div>
+          </div>
+        </div>
+
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-blue">🧴</div>
+          <div class="metric-details">
+            <div id="kpi-products" class="num">12</div>
+            <div class="label">Total Products</div>
+          </div>
+        </div>
+
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-green">💆‍♀️</div>
+          <div class="metric-details">
+            <div id="kpi-services" class="num">10</div>
+            <div class="label">Active Services</div>
+          </div>
+        </div>
+
+        <div class="admin-metric-card">
+          <div class="metric-icon-box metric-icon-rose">💵</div>
+          <div class="metric-details">
+            <div id="kpi-revenue" class="num">$480.00</div>
+            <div class="label">Est. Revenue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Tabs Navigation -->
+      <div class="admin-tabs-nav">
+        <button class="admin-tab-btn active" data-target="admin-panel-appointments">
+          📅 Appointments Manager
+        </button>
+        <button class="admin-tab-btn" data-target="admin-panel-products">
+          🧴 Skincare Catalog (CRUD)
+        </button>
+        <button class="admin-tab-btn" data-target="admin-panel-services">
+          💆‍♀️ Salon Services
+        </button>
+        <button class="admin-tab-btn" data-target="admin-panel-customers">
+          👥 Registered Clients
+        </button>
+      </div>
+
+      <!-- TAB 1: Appointments Management -->
+      <div id="admin-panel-appointments" class="admin-tab-panel active">
+        <div class="admin-table-toolbar">
+          <div style="font-weight:700; font-size:1.1rem;">Client Appointments Ledger</div>
+          <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-secondary btn-sm" onclick="filterAdminAppointments('all')">All</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterAdminAppointments('pending')">Pending</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterAdminAppointments('confirmed')">Confirmed</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterAdminAppointments('completed')">Completed</button>
+            <button class="btn btn-secondary btn-sm" onclick="filterAdminAppointments('cancelled')">Cancelled</button>
+          </div>
+        </div>
+
+        <div class="admin-table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Booking ID</th>
+                <th>Client Name & Email</th>
+                <th>Selected Service</th>
+                <th>Date & Time</th>
+                <th>Amount</th>
+                <th>Appointment Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-appointments-tbody">
+              <!-- Rendered dynamically by js/admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: Products Catalog Management -->
+      <div id="admin-panel-products" class="admin-tab-panel">
+        <div class="admin-table-toolbar">
+          <div style="font-weight:700; font-size:1.1rem;">Product Inventory Catalog</div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('admin-product-modal').classList.add('active');">
+            + Add New Skincare Formulation
+          </button>
+        </div>
+
+        <div class="admin-table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Product Name & Description</th>
+                <th>Category</th>
+                <th>Unit Price</th>
+                <th>Rating</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admin-products-tbody">
+              <!-- Rendered dynamically by js/admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: Services Management -->
+      <div id="admin-panel-services" class="admin-tab-panel">
+        <div class="admin-table-toolbar">
+          <div style="font-weight:700; font-size:1.1rem;">Beauty & Therapy Services</div>
+          <span style="font-size:0.85rem; color:var(--text-muted);">10 Treatments Currently Available</span>
+        </div>
+
+        <div class="admin-table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Cover</th>
+                <th>Service Name & Suitability</th>
+                <th>Category</th>
+                <th>Duration</th>
+                <th>Session Fee</th>
+              </tr>
+            </thead>
+            <tbody id="admin-services-tbody">
+              <!-- Rendered dynamically by js/admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 4: Customers Directory -->
+      <div id="admin-panel-customers" class="admin-tab-panel">
+        <div class="admin-table-toolbar">
+          <div style="font-weight:700; font-size:1.1rem;">Registered Client Directory</div>
+        </div>
+
+        <div class="admin-table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Customer Name</th>
+                <th>Email Address</th>
+                <th>Role</th>
+                <th>Diagnosed Skin Type</th>
+                <th>Member Since</th>
+              </tr>
+            </thead>
+            <tbody id="admin-customers-tbody">
+              <!-- Rendered dynamically by js/admin.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Add New Product Modal -->
+  <div id="admin-product-modal" class="modal-overlay">
+    <div class="modal-card">
+      <button id="btn-close-product-modal" class="modal-close-btn">✕</button>
+      <h3 style="font-size:1.35rem; margin-bottom:1.2rem;">Add New Skincare Product</h3>
+
+      <form id="admin-new-product-form">
+        <div class="admin-form-grid">
+          <div class="form-field form-group-full">
+            <label for="new-prod-name" class="form-label">Product Name *</label>
+            <input type="text" id="new-prod-name" class="form-input" placeholder="e.g. Centella Calming Gel" required>
+          </div>
+
+          <div class="form-field">
+            <label for="new-prod-category" class="form-label">Category *</label>
+            <select id="new-prod-category" class="form-select" required>
+              <option value="Cleansers">Cleansers</option>
+              <option value="Moisturizers">Moisturizers</option>
+              <option value="Sunscreens">Sunscreens</option>
+              <option value="Serums">Serums</option>
+              <option value="Acne Care">Acne Care</option>
+              <option value="Hydration">Hydration</option>
+              <option value="Brightening">Brightening</option>
+              <option value="Skin Repair">Skin Repair</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="new-prod-price" class="form-label">Price ($ USD) *</label>
+            <input type="number" id="new-prod-price" class="form-input" step="0.5" placeholder="28.00" required>
+          </div>
+
+          <div class="form-field form-group-full">
+            <label for="new-prod-image" class="form-label">Product Image URL</label>
+            <input type="url" id="new-prod-image" class="form-input" placeholder="https://images.unsplash.com/...">
+          </div>
+
+          <div class="form-field form-group-full">
+            <label for="new-prod-concerns" class="form-label">Targeted Skin Concerns (comma-separated)</label>
+            <input type="text" id="new-prod-concerns" class="form-input" placeholder="Pimples / Acne, Visible Pores, Oily Skin">
+          </div>
+
+          <div class="form-field form-group-full">
+            <label for="new-prod-desc" class="form-label">Product Short Description</label>
+            <textarea id="new-prod-desc" class="form-textarea" placeholder="Brief explanation of product texture, active ingredients, and benefits..."></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:0.8rem; margin-top:1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('admin-product-modal').classList.remove('active');">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save to Catalog</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom-bar" style="border-top:none; padding-top:0;">
+        <div>© 2026 Glow Care Inc. Admin Operations Console.</div>
+        <div>Confidential & Internal Project Demo Management.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

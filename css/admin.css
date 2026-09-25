@@ -1,0 +1,281 @@
+/* ==========================================================================
+   Glow Care - Admin Dashboard Stylesheet
+   Professional Management Interface for Appointments, Products, Services, & Users
+   ========================================================================== */
+
+.admin-wrapper {
+  padding: 2.5rem 0 5rem;
+}
+
+.admin-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.admin-header-titles h1 {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.admin-header-titles p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.admin-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Metric KPI Cards Grid */
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.admin-metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  transition: transform var(--transition-fast);
+}
+
+.admin-metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.metric-icon-rose { background: var(--primary-light); color: var(--primary); }
+.metric-icon-teal { background: rgba(43, 122, 120, 0.15); color: #2B7A78; }
+.metric-icon-amber { background: rgba(244, 162, 97, 0.15); color: #E76F51; }
+.metric-icon-blue { background: rgba(58, 134, 255, 0.15); color: #3A86FF; }
+.metric-icon-green { background: rgba(82, 183, 136, 0.15); color: #2A9D8F; }
+
+.metric-details .num {
+  font-family: var(--font-heading);
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.metric-details .label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Tab Navigation */
+.admin-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+}
+
+.admin-tab-btn {
+  padding: 0.8rem 1.4rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  white-space: nowrap;
+}
+
+.admin-tab-btn:hover {
+  color: var(--primary);
+}
+
+.admin-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Tab Content Panels */
+.admin-tab-panel {
+  display: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1.8rem;
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.admin-tab-panel.active {
+  display: block;
+}
+
+/* Management Tables */
+.admin-table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.admin-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.92rem;
+}
+
+.admin-table th {
+  padding: 0.9rem 1rem;
+  background: var(--bg-main);
+  color: var(--text-secondary);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.admin-table tr:hover td {
+  background: rgba(217, 107, 98, 0.03);
+}
+
+/* Status Badges */
+.status-pill {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.status-pending { background: rgba(244, 162, 97, 0.18); color: #E76F51; }
+.status-confirmed { background: rgba(82, 183, 136, 0.18); color: #2A9D8F; }
+.status-completed { background: rgba(58, 134, 255, 0.18); color: #3A86FF; }
+.status-cancelled { background: rgba(230, 57, 70, 0.18); color: #E63946; }
+
+/* Status Selector Select */
+.status-select {
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  font-size: 0.82rem;
+  font-weight: 600;
+  outline: none;
+}
+
+.action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-action-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  background: var(--bg-main);
+}
+
+.btn-action-icon:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-action-delete:hover {
+  color: #E63946;
+  border-color: #E63946;
+  background: rgba(230, 57, 70, 0.1);
+}
+
+/* Modal Form Styles */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+
+.form-group-full {
+  grid-column: span 2;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-input, .form-textarea, .form-select {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  outline: none;
+  font-size: 0.92rem;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  border-color: var(--primary);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+@media (max-width: 768px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-group-full {
+    grid-column: span 1;
+  }
+}

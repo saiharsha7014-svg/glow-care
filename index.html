@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glow Care – Smart Beauty & Skin Care | Live AI Face Skin Scanner</title>
+  <meta name="description" content="Scan your skin, understand visible concerns, and discover personalized skincare and clinical beauty treatments with Glow Care AI vision.">
+  
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header class="site-header">
+    <div class="container nav-container">
+      <a href="index.html" class="brand-logo">
+        <div class="brand-sparkle">✨</div>
+        <div class="brand-name">Glow<span>Care</span></div>
+      </a>
+
+      <!-- Desktop Navigation Menu -->
+      <nav class="nav-menu">
+        <a href="index.html" class="nav-link active">Home</a>
+        <a href="scanner.html" class="nav-link">
+          AI Face Scanner <span class="nav-badge-pill">Live AI</span>
+        </a>
+        <a href="products.html" class="nav-link">Products</a>
+        <a href="services.html" class="nav-link">Services</a>
+        <a href="book.html" class="nav-link">Book Appointment</a>
+        <a href="my-appointments.html" class="nav-link">My Bookings</a>
+        <a href="about.html" class="nav-link">About</a>
+        <a href="contact.html" class="nav-link">Contact</a>
+        <a href="admin.html" class="nav-link" id="nav-admin-link" style="color:var(--secondary); font-weight:700;">Admin</a>
+      </nav>
+
+      <!-- Action Icons & Account -->
+      <div class="nav-actions">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle-btn" class="btn-icon" title="Toggle Light/Dark Theme">🌙</button>
+
+        <!-- Favorites Trigger -->
+        <button id="favorites-toggle-btn" class="btn-icon" title="Saved Favorites">
+          ❤️
+          <span id="nav-fav-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <!-- Cart Trigger -->
+        <button id="cart-toggle-btn" class="btn-icon" title="Shopping Cart">
+          🛍️
+          <span id="nav-cart-count" class="badge-count" style="display:none;">0</span>
+        </button>
+
+        <!-- User Menu -->
+        <div class="user-menu-wrapper">
+          <button id="user-avatar-btn" class="user-avatar-btn">
+            <div id="nav-user-initials" class="avatar-circle">SJ</div>
+            <span id="nav-user-name">Sarah</span>
+            <span style="font-size:0.75rem;">▼</span>
+          </button>
+          
+          <div id="user-dropdown-panel" class="dropdown-panel">
+            <div class="dropdown-header">
+              <div class="name">Sarah Jenkins</div>
+              <div class="email">demo@glowcare.com</div>
+            </div>
+            <a href="my-appointments.html" class="dropdown-item">📅 My Appointments</a>
+            <a href="scanner.html" class="dropdown-item">🔬 My Skin Scan</a>
+            <a href="auth.html" class="dropdown-item">👤 Account Profile</a>
+            <a href="admin.html" class="dropdown-item">⚙️ Admin Dashboard</a>
+            <div class="dropdown-divider"></div>
+            <button onclick="handleLogout()" class="dropdown-item" style="color:var(--status-danger);">🚪 Logout</button>
+          </div>
+        </div>
+
+        <!-- Mobile Nav Toggle -->
+        <button class="mobile-nav-toggle btn-icon" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-glow-bg"></div>
+    <div class="hero-glow-left"></div>
+
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <span class="section-tag">✨ Advanced Computer Vision & Skincare Science</span>
+        <h1>Glow Care – <span class="gradient-text">Smart Beauty & Skin Care</span></h1>
+        <p class="hero-subtitle">
+          Scan your skin, understand your concerns and discover personalized skincare recommendations powered by real-time computer vision.
+        </p>
+
+        <div class="hero-actions">
+          <a href="scanner.html" class="btn btn-primary btn-lg btn-scan-glow">
+            <span>📷</span> Start Face Scan
+          </a>
+          <a href="products.html" class="btn btn-secondary btn-lg">
+            Explore Products
+          </a>
+          <a href="book.html" class="btn btn-outline-primary btn-lg">
+            Book Appointment
+          </a>
+        </div>
+
+        <div class="hero-badges-row">
+          <div class="hero-badge-item">
+            <div class="badge-icon">⚡</div>
+            <div class="badge-text">
+              <span class="num">Live AI</span>
+              <span class="label">Face Detection</span>
+            </div>
+          </div>
+          <div class="hero-badge-item">
+            <div class="badge-icon">🔬</div>
+            <div class="badge-text">
+              <span class="num">10+</span>
+              <span class="label">Skin Concerns</span>
+            </div>
+          </div>
+          <div class="hero-badge-item">
+            <div class="badge-icon">🌿</div>
+            <div class="badge-text">
+              <span class="num">100%</span>
+              <span class="label">Safe & Gentle</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scanner Visual Interactive Teaser -->
+      <div class="hero-visual">
+        <div class="scanner-teaser-card">
+          <div class="teaser-media-wrapper">
+            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=700&q=80" alt="Face Skin Scan AI Demonstration">
+            <div class="scanner-laser-line"></div>
+            
+            <div class="scanner-hud-box">
+              <div class="hud-corner hud-tl"></div>
+              <div class="hud-corner hud-tr"></div>
+              <div class="hud-corner hud-bl"></div>
+              <div class="hud-corner hud-br"></div>
+            </div>
+
+            <div class="teaser-tag-chip">
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span class="hud-status-indicator pulse"></span>
+                <span style="font-size:0.82rem; font-weight:700;">Live Landmark Tracking Active</span>
+              </div>
+              <span style="font-size:0.75rem; color:#52B788; font-weight:700;">98.4% Precision</span>
+            </div>
+          </div>
+
+          <!-- Floating Badges -->
+          <div class="teaser-floating-badge floating-badge-1">
+            <span style="font-size:1.3rem;">✨</span>
+            <div>
+              <strong style="font-size:0.85rem; display:block;">Pore Clarity</strong>
+              <span style="font-size:0.75rem; color:var(--status-success); font-weight:700;">Balanced (88%)</span>
+            </div>
+          </div>
+
+          <div class="teaser-floating-badge floating-badge-2">
+            <span style="font-size:1.3rem;">💧</span>
+            <div>
+              <strong style="font-size:0.85rem; display:block;">Hydration Level</strong>
+              <span style="font-size:0.75rem; color:var(--status-info); font-weight:700;">Deep Moisture Restored</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Medical Disclaimer Banner (Strict Prompt Requirement) -->
+  <div class="container">
+    <div class="medical-disclaimer-box">
+      <div class="disclaimer-icon">ℹ️</div>
+      <div class="disclaimer-text">
+        <strong>Important Notice:</strong> “Glow Care provides general skincare guidance only. Results are not a medical diagnosis.” Please consult a board-certified dermatologist for medical conditions.
+      </div>
+    </div>
+  </div>
+
+  <!-- Section: Smart Face Scanner Main Feature Showcase -->
+  <section class="feature-highlight-section">
+    <div class="container">
+      <div class="highlight-box">
+        <div>
+          <span class="section-tag">Featured Technology</span>
+          <h2 class="section-title">AI Computer Vision <br>Skin Diagnostics</h2>
+          <p class="section-desc">
+            Experience our patent-pending web camera skin scanner. Without installing any app, your browser detects facial landmarks in real time and calculates moisture, sebum, texture, and capillary tone.
+          </p>
+
+          <div class="highlight-points-list">
+            <div class="highlight-point-item">
+              <div class="point-icon">✓</div>
+              <div>
+                <div class="point-title">Acne & Blemishes</div>
+                <div class="point-desc">Pinpoints active pustules and comedone clusters.</div>
+              </div>
+            </div>
+            <div class="highlight-point-item">
+              <div class="point-icon">✓</div>
+              <div>
+                <div class="point-title">T-Zone Sebum</div>
+                <div class="point-desc">Analyzes specular light reflectance to gauge shine.</div>
+              </div>
+            </div>
+            <div class="highlight-point-item">
+              <div class="point-icon">✓</div>
+              <div>
+                <div class="point-title">Dark Spots & Tone</div>
+                <div class="point-desc">Scans localized hyperpigmentation variations.</div>
+              </div>
+            </div>
+            <div class="highlight-point-item">
+              <div class="point-icon">✓</div>
+              <div>
+                <div class="point-title">Pores & Texture</div>
+                <div class="point-desc">Measures micro-contrast and surface smoothness.</div>
+              </div>
+            </div>
+          </div>
+
+          <a href="scanner.html" class="btn btn-primary btn-lg">Launch Live Scanner Now →</a>
+        </div>
+
+        <div class="scanner-preview-interactive">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+            <h4 style="font-size:1.1rem;">Live Health Metrics Preview</h4>
+            <span class="section-tag" style="margin:0; font-size:0.75rem;">Real-time</span>
+          </div>
+
+          <div class="analysis-radar-preview">
+            <div class="metric-bar-group">
+              <div class="metric-header">
+                <span>Moisture & Hydration</span>
+                <span style="color:#2A9D8F;">82% (Optimal)</span>
+              </div>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill" style="width: 82%;"></div>
+              </div>
+            </div>
+
+            <div class="metric-bar-group">
+              <div class="metric-header">
+                <span>T-Zone Sebum Balance</span>
+                <span style="color:#E76F51;">54% (Moderate)</span>
+              </div>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill" style="width: 54%; background: #E76F51;"></div>
+              </div>
+            </div>
+
+            <div class="metric-bar-group">
+              <div class="metric-header">
+                <span>Pore Clarity & Smoothness</span>
+                <span style="color:#2B7A78;">76% (Good)</span>
+              </div>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill" style="width: 76%; background: #2B7A78;"></div>
+              </div>
+            </div>
+
+            <div class="metric-bar-group">
+              <div class="metric-header">
+                <span>Capillary Redness</span>
+                <span style="color:#52B788;">18% (Low)</span>
+              </div>
+              <div class="metric-bar-track">
+                <div class="metric-bar-fill" style="width: 18%; background: #52B788;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: How It Works (4 Steps) -->
+  <section class="how-it-works-section">
+    <div class="container">
+      <div class="text-center" style="max-width:680px; margin:0 auto 3rem;">
+        <span class="section-tag">Effortless Journey</span>
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-desc">Transform your skincare routine in four simple, science-backed steps.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-number">01</span>
+          <div class="step-icon-box">📷</div>
+          <h3 class="step-title">Scan</h3>
+          <p class="step-desc">Open your device's front camera and align your face inside the guided oval target frame.</p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-number">02</span>
+          <div class="step-icon-box">🔬</div>
+          <h3 class="step-title">Analyze</h3>
+          <p class="step-desc">Our browser AI inspects visible skin characteristics, hydration, redness, and blemish hotspots.</p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-number">03</span>
+          <div class="step-icon-box">✨</div>
+          <h3 class="step-title">Recommend</h3>
+          <p class="step-desc">Receive a personalized AM/PM skincare blueprint and non-comedogenic product formulations.</p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-number">04</span>
+          <div class="step-icon-box">🌸</div>
+          <h3 class="step-title">Glow</h3>
+          <p class="step-desc">Follow your customized routine daily or book an in-person professional salon therapy.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Featured Products -->
+  <section class="products-section" style="background:var(--bg-surface);">
+    <div class="container">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <span class="section-tag">Clinical Formulations</span>
+          <h2 class="section-title" style="margin-bottom:0.5rem;">Recommended Formulations</h2>
+          <p style="color:var(--text-secondary); max-width:520px;">Dermatologist-approved, fragrance-free, and matched to specific skin concerns.</p>
+        </div>
+        <a href="products.html" class="btn btn-outline-primary">Browse All Products →</a>
+      </div>
+
+      <div class="products-grid" id="home-featured-products">
+        <!-- Rendered dynamically via store data -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Popular Beauty Services -->
+  <section class="services-section">
+    <div class="container">
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2.5rem; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <span class="section-tag">Salon & Spa</span>
+          <h2 class="section-title" style="margin-bottom:0.5rem;">Signature Beauty Treatments</h2>
+          <p style="color:var(--text-secondary); max-width:520px;">From medical-grade Hydra-Facials to bridal glow styling, book your session online.</p>
+        </div>
+        <a href="services.html" class="btn btn-outline-primary">View All 10 Services →</a>
+      </div>
+
+      <div class="services-grid" id="home-featured-services">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: Why Choose Glow Care -->
+  <section class="why-choose-section">
+    <div class="container">
+      <div class="text-center" style="max-width:680px; margin:0 auto 3.5rem;">
+        <span class="section-tag">The Glow Care Difference</span>
+        <h2 class="section-title">Why Choose Glow Care</h2>
+        <p class="section-desc">We bridge cutting-edge computer vision with gentle, non-prescriptive skincare principles.</p>
+      </div>
+
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-icon">🧠</div>
+          <h3 class="benefit-title">Client-Side AI Privacy</h3>
+          <p class="benefit-desc">Your camera feed and facial images are analyzed locally inside your browser. No video is ever recorded or uploaded to external servers.</p>
+        </div>
+
+        <div class="benefit-card">
+          <div class="benefit-icon">🩺</div>
+          <h3 class="benefit-title">Dermatology Safe</h3>
+          <p class="benefit-desc">No hazardous medical prescriptions. We recommend gentle, barrier-friendly active ingredients with clinical backing.</p>
+        </div>
+
+        <div class="benefit-card">
+          <div class="benefit-icon">📅</div>
+          <h3 class="benefit-title">Seamless Booking</h3>
+          <p class="benefit-desc">Directly connect your skin diagnosis to certified aesthetician appointments in one streamlined experience.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <a href="index.html" class="brand-logo" style="margin-bottom:0.8rem;">
+            <div class="brand-sparkle">✨</div>
+            <div class="brand-name">Glow<span>Care</span></div>
+          </a>
+          <p class="footer-brand-desc">
+            Smart Beauty & Skin Care platform integrating live browser computer vision with personalized skincare routines.
+          </p>
+          <div class="footer-socials">
+            <span class="btn-icon">📸</span>
+            <span class="btn-icon">📘</span>
+            <span class="btn-icon">🐦</span>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Quick Links</h4>
+          <ul class="footer-links-list">
+            <li><a href="index.html" class="footer-link">Home</a></li>
+            <li><a href="scanner.html" class="footer-link">Live AI Skin Scanner</a></li>
+            <li><a href="products.html" class="footer-link">Skincare Catalog</a></li>
+            <li><a href="services.html" class="footer-link">Beauty Services</a></li>
+            <li><a href="book.html" class="footer-link">Book Appointment</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Account & Support</h4>
+          <ul class="footer-links-list">
+            <li><a href="my-appointments.html" class="footer-link">My Appointments</a></li>
+            <li><a href="auth.html" class="footer-link">User Login / Signup</a></li>
+            <li><a href="admin.html" class="footer-link">Admin Dashboard</a></li>
+            <li><a href="about.html" class="footer-link">About Our AI</a></li>
+            <li><a href="contact.html" class="footer-link">Contact Clinic</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 class="footer-col-title">Clinic Hours & Contact</h4>
+          <div class="footer-contact-info">
+            <p>📍 742 Evergreen Wellness Ave, Suite 300</p>
+            <p>📞 +1 (800) 555-GLOW (4569)</p>
+            <p>✉️ support@glowcare.com</p>
+            <p>⏰ Mon - Sat: 9:00 AM – 7:30 PM</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <div>© 2026 Glow Care Inc. All rights reserved. Built for College Project & Hackathon Showcase.</div>
+        <div>General skincare guidance only. Results are not a medical diagnosis.</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/navbar.js"></script>
+  <script>
+    // Populate Featured Products & Services on Home Page
+    document.addEventListener('DOMContentLoaded', () => {
+      const prodContainer = document.getElementById('home-featured-products');
+      const srvContainer = document.getElementById('home-featured-services');
+
+      if (prodContainer && window.store) {
+        const featuredProds = window.store.getProducts().slice(0, 4);
+        prodContainer.innerHTML = featuredProds.map(p => `
+          <div class="product-card">
+            <div class="product-thumb-wrapper">
+              <img src="${p.image}" alt="${p.name}">
+              <span class="product-badge-tag">${p.badge || p.category}</span>
+              <button class="product-fav-btn ${window.store.isFavorite(p.id) ? 'active' : ''}" onclick="window.store.toggleFavorite('${p.id}'); this.classList.toggle('active');">♥</button>
+            </div>
+            <div class="product-body">
+              <div class="product-meta-row">
+                <span class="product-category-name">${p.category}</span>
+                <span class="product-rating">★ ${p.rating}</span>
+              </div>
+              <h3 class="product-title">${p.name}</h3>
+              <p class="product-desc">${p.shortDesc}</p>
+              <div class="why-recommended-box">
+                <strong>Why It's Loved:</strong> ${p.recommendationReason.slice(0, 90)}...
+              </div>
+              <div class="product-footer-row">
+                <span class="product-price">$${p.price.toFixed(2)}</span>
+                <div class="product-card-actions">
+                  <a href="products.html?category=${encodeURIComponent(p.category)}" class="btn btn-outline-primary btn-sm">Details</a>
+                  <button class="btn btn-primary btn-sm" onclick="window.store.addToCart('${p.id}', 1); window.showToast('Added to cart!', 'success');">Add to Cart</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      if (srvContainer && window.store) {
+        const featuredSrvs = window.store.getServices().slice(0, 3);
+        srvContainer.innerHTML = featuredSrvs.map(s => `
+          <div class="service-card">
+            <div class="service-image-box">
+              <img src="${s.image}" alt="${s.name}">
+              <span class="service-duration-badge">⏱ ${s.duration}</span>
+            </div>
+            <div class="service-body">
+              <div style="font-size:0.75rem; font-weight:700; color:var(--primary); text-transform:uppercase; margin-bottom:0.3rem;">${s.category}</div>
+              <h3 class="service-title">${s.name}</h3>
+              <p class="service-desc">${s.description}</p>
+              <div class="service-footer">
+                <span class="service-price">$${s.price.toFixed(2)}</span>
+                <a href="book.html?service=${s.id}" class="btn btn-primary">Book Now</a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    });
+  </script>
+</body>
+</html>
